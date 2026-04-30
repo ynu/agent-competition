@@ -48,10 +48,16 @@ async def get_contents(
     if parent_id is not None:
         query = query.filter(Content.parent_id == parent_id)
 
+    # 如果 is_published 显式传递了值（包括 false），使用该值过滤
+    # 如果没有传递，则：
+    #   - 已登录用户（reviewer/admin）可以看到所有内容
+    #   - 未登录用户只能看到已发布的内容
     if is_published is not None:
         query = query.filter(Content.is_published == is_published)
+    elif current_user and current_user.role in [UserRole.REVIEWER, UserRole.ADMIN, UserRole.USER]:
+        # 已登录用户可以看到全部内容（包括草稿）
+        pass
     else:
-        # 默认只显示已发布的
         query = query.filter(Content.is_published == True)
 
     total = query.count()
@@ -83,6 +89,52 @@ async def get_content_tree(
     return [build_tree(c) for c in contents]
 
 
+@router.get("/articles", response_model=PageResponse)
+async def get_articles(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    keyword: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取新闻/文章列表"""
+    query = db.query(Content).filter(
+        Content.type == ContentType.ARTICLE,
+        Content.is_published == True
+    )
+
+    if keyword:
+        query = query.filter(
+            Content.title.ilike(f"%{keyword}%") |
+            Content.summary.ilike(f"%{keyword}%")
+        )
+
+    total = query.count()
+    articles = query.order_by(Content.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return PageResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[ContentResponse.model_validate(a) for a in articles]
+    )
+
+
+@router.get("/articles/latest", response_model=List[ContentResponse])
+async def get_latest_articles(
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取最新文章列表"""
+    articles = db.query(Content).filter(
+        Content.type == ContentType.ARTICLE,
+        Content.is_published == True
+    ).order_by(Content.created_at.desc()).limit(limit).all()
+
+    return [ContentResponse.model_validate(a) for a in articles]
+
+
 @router.get("/slug/{slug}", response_model=ContentResponse)
 async def get_content_by_slug(
     slug: str,
@@ -111,6 +163,10 @@ async def get_content(
     content = db.query(Content).filter(Content.id == content_id).first()
     if not content:
         raise HTTPException(status_code=404, detail="内容不存在")
+
+    # 增加浏览次数
+    content.view_count = (content.view_count or 0) + 1
+    db.commit()
 
     return ContentResponse.model_validate(content)
 

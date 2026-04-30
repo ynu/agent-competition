@@ -29,6 +29,7 @@ class Work(Base):
     pdf_file = Column(String(500), nullable=True, comment="PDF文件路径")
     video_file = Column(String(500), nullable=True, comment="视频文件路径")
     vote_count = Column(Integer, default=0, comment="投票数")
+    view_count = Column(Integer, default=0, comment="浏览次数")
     score = Column(Float, nullable=True, comment="评审分数")
     status = Column(SQLEnum(WorkStatus), default=WorkStatus.PENDING, comment="状态")
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")

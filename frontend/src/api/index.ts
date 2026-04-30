@@ -109,7 +109,11 @@ export const contentApi = {
   create: (data: any) => api.post('/contents', data),
   update: (id: number, data: any) => api.put(`/contents/${id}`, data),
   delete: (id: number) => api.delete(`/contents/${id}`),
-  generateStatic: (id: number) => api.post(`/contents/${id}/generate-static`)
+  generateStatic: (id: number) => api.post(`/contents/${id}/generate-static`),
+  // 文章/新闻 API
+  articles: (params?: { page?: number; page_size?: number; keyword?: string }) =>
+    api.get('/contents/articles', { params }),
+  latestArticles: (limit?: number) => api.get('/contents/articles/latest', { params: { limit } })
 }
 
 // Settings APIs

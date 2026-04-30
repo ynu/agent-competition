@@ -12,6 +12,7 @@ class ContentType(str, enum.Enum):
     """内容类型"""
     PAGE = "page"       # 页面
     CATEGORY = "category"  # 栏目
+    ARTICLE = "article"    # 文章/新闻
 
 
 class ContentContentType(str, enum.Enum):
@@ -39,6 +40,12 @@ class Content(Base):
     # 关系
     parent = relationship("Content", remote_side=[id], back_populates="children")
     children = relationship("Content", back_populates="parent")
+
+    # 文章特有字段
+    summary = Column(String(500), nullable=True, comment="摘要")
+    author = Column(String(100), nullable=True, comment="作者")
+    cover_image = Column(String(500), nullable=True, comment="封面图片URL")
+    view_count = Column(Integer, default=0, comment="浏览次数")
 
     def __repr__(self):
         return f"<Content {self.title}>"

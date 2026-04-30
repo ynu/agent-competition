@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useNotification } from '@/composables/useNotification'
+import markdownIt from 'markdown-it'
 
 const { success, error } = useNotification()
 
@@ -14,8 +15,14 @@ const pageSize = 20
 const typeFilter = ref('')
 
 const showModal = ref(false)
+const previewMode = ref(false)
 
-// Confirm dialog state
+const md = markdownIt()
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  return md.render(content)
+}
+
 const showConfirm = ref(false)
 const confirmMessage = ref('')
 const confirmCallback = ref<(() => void) | null>(null)
@@ -27,8 +34,24 @@ const formData = ref({
   content: '',
   content_format: 'markdown',
   is_published: false,
-  order: 0
+  order: 0,
+  summary: '',
+  author: '',
+  cover_image: ''
 })
+
+const typeOptions = [
+  { value: '', label: '全部类型' },
+  { value: 'page', label: '页面' },
+  { value: 'category', label: '栏目' },
+  { value: 'article', label: '文章' }
+]
+
+const formTypeOptions = [
+  { value: 'page', label: '页面' },
+  { value: 'category', label: '栏目' },
+  { value: 'article', label: '文章' }
+]
 
 onMounted(() => {
   fetchContents()
@@ -41,7 +64,8 @@ async function fetchContents() {
       params: {
         page: page.value,
         page_size: pageSize,
-        type: typeFilter.value || undefined
+        type: typeFilter.value || undefined,
+        is_published: undefined
       }
     })
     contents.value = res.data.items || []
@@ -58,12 +82,16 @@ function openCreate() {
   formData.value = {
     title: '',
     slug: '',
-    type: 'page',
+    type: 'article',
     content: '',
     content_format: 'markdown',
     is_published: false,
-    order: 0
+    order: 0,
+    summary: '',
+    author: '',
+    cover_image: ''
   }
+  previewMode.value = false
   showModal.value = true
 }
 
@@ -76,17 +104,22 @@ function openEdit(content: any) {
     content: content.content || '',
     content_format: content.content_format,
     is_published: content.is_published,
-    order: content.order
+    order: content.order,
+    summary: content.summary || '',
+    author: content.author || '',
+    cover_image: content.cover_image || ''
   }
+  previewMode.value = false
   showModal.value = true
 }
 
 async function handleSave() {
   try {
+    const data = { ...formData.value }
     if (editingContent.value) {
-      await api.put(`/contents/${editingContent.value.id}`, formData.value)
+      await api.put(`/contents/${editingContent.value.id}`, data)
     } else {
-      await api.post('/contents', formData.value)
+      await api.post('/contents', data)
     }
     showModal.value = false
     success('保存成功')
@@ -123,6 +156,20 @@ function handlePageChange(newPage: number) {
   page.value = newPage
   fetchContents()
 }
+
+function getTypeLabel(type: string) {
+  const map: Record<string, string> = { page: '页面', category: '栏目', article: '文章' }
+  return map[type] || type
+}
+
+function getTypeClass(type: string) {
+  const map: Record<string, string> = {
+    page: 'bg-blue-100 text-blue-700',
+    category: 'bg-purple-100 text-purple-700',
+    article: 'bg-green-100 text-green-700'
+  }
+  return map[type] || 'bg-gray-100 text-gray-700'
+}
 </script>
 
 <template>
@@ -132,7 +179,7 @@ function handlePageChange(newPage: number) {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-800">内容管理</h1>
-          <p class="text-sm text-gray-500 mt-1">管理页面与栏目内容</p>
+          <p class="text-sm text-gray-500 mt-1">管理页面、栏目与文章</p>
         </div>
         <button
           @click="openCreate"
@@ -154,9 +201,7 @@ function handlePageChange(newPage: number) {
           class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white min-w-[140px]"
           @change="fetchContents"
         >
-          <option value="">全部类型</option>
-          <option value="page">页面</option>
-          <option value="category">栏目</option>
+          <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
       </div>
     </div>
@@ -186,10 +231,9 @@ function handlePageChange(newPage: number) {
             <td class="px-6 py-4 text-sm">
               <span
                 class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"
-                :class="content.type === 'page' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+                :class="getTypeClass(content.type)"
               >
-                <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="content.type === 'page' ? 'bg-blue-500' : 'bg-purple-500'"></span>
-                {{ content.type === 'page' ? '页面' : '栏目' }}
+                {{ getTypeLabel(content.type) }}
               </span>
             </td>
             <td class="px-6 py-4 text-sm">
@@ -255,10 +299,17 @@ function handlePageChange(newPage: number) {
 
     <!-- Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-          <h3 class="text-lg font-semibold text-white">{{ editingContent ? '编辑内容' : '创建内容' }}</h3>
-          <p class="text-blue-100 text-sm">{{ editingContent ? '修改内容信息' : '创建新的页面或栏目' }}</p>
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+          <div>
+            <h3 class="text-lg font-semibold text-white">{{ editingContent ? '编辑内容' : '创建内容' }}</h3>
+            <p class="text-blue-100 text-sm">{{ editingContent ? '修改内容信息' : '创建新的页面或栏目' }}</p>
+          </div>
+          <button @click="showModal = false" class="text-white hover:bg-white/20 rounded-lg p-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
         <form @submit.prevent="handleSave" class="p-6 space-y-5 overflow-y-auto flex-1">
           <div class="grid md:grid-cols-2 gap-5">
@@ -277,6 +328,7 @@ function handlePageChange(newPage: number) {
                 v-model="formData.slug"
                 type="text"
                 required
+                placeholder="url-slug"
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm"
               />
             </div>
@@ -289,8 +341,7 @@ function handlePageChange(newPage: number) {
                 v-model="formData.type"
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
               >
-                <option value="page">页面</option>
-                <option value="category">栏目</option>
+                <option v-for="opt in formTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div>
@@ -301,6 +352,39 @@ function handlePageChange(newPage: number) {
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
+          </div>
+
+          <!-- Article fields -->
+          <div v-if="formData.type === 'article'" class="grid md:grid-cols-3 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">作者</label>
+              <input
+                v-model="formData.author"
+                type="text"
+                placeholder="作者名称"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">封面图片URL</label>
+              <input
+                v-model="formData.cover_image"
+                type="url"
+                placeholder="https://..."
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Article summary -->
+          <div v-if="formData.type === 'article'">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">摘要</label>
+            <textarea
+              v-model="formData.summary"
+              rows="2"
+              placeholder="文章摘要（显示在列表中）"
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            ></textarea>
           </div>
 
           <div class="grid md:grid-cols-2 gap-5">
@@ -326,14 +410,35 @@ function handlePageChange(newPage: number) {
             </div>
           </div>
 
+          <!-- Content editor with preview -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">内容</label>
-            <textarea
-              v-model="formData.content"
-              rows="10"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm"
-            ></textarea>
-            <p class="text-xs text-gray-500 mt-1.5">支持 Markdown 或 HTML 格式</p>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-sm font-medium text-gray-700">内容</label>
+              <button
+                type="button"
+                @click="previewMode = !previewMode"
+                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {{ previewMode ? '编辑' : '预览' }}
+              </button>
+            </div>
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <textarea
+                v-if="!previewMode"
+                v-model="formData.content"
+                rows="15"
+                placeholder="支持 Markdown 格式..."
+                class="w-full px-4 py-3 border-0 focus:ring-0 resize-none font-mono text-sm"
+              ></textarea>
+              <div
+                v-else
+                class="p-4 min-h-[300px] prose prose-sm max-w-none"
+                v-html="renderMarkdown(formData.content)"
+              ></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1.5">
+              支持 Markdown 格式。切换到预览模式查看效果。
+            </p>
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -369,3 +474,18 @@ function handlePageChange(newPage: number) {
     />
   </div>
 </template>
+
+<style scoped>
+.prose :deep(h1) { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.75rem; }
+.prose :deep(h2) { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.625rem; }
+.prose :deep(h3) { font-size: 1.125rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+.prose :deep(p) { margin: 0.5rem 0; line-height: 1.7; }
+.prose :deep(ul), .prose :deep(ol) { padding-left: 1.5rem; margin: 0.5rem 0; }
+.prose :deep(li) { margin: 0.25rem 0; }
+.prose :deep(code) { background: #f3f4f6; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: monospace; }
+.prose :deep(pre) { background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+.prose :deep(blockquote) { border-left: 4px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; color: #6b7280; }
+.prose :deep(img) { max-width: 100%; height: auto; border-radius: 0.5rem; }
+.prose :deep(a) { color: #3b82f6; text-decoration: none; }
+.prose :deep(a:hover) { text-decoration: underline; }
+</style>

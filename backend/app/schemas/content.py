@@ -17,6 +17,10 @@ class ContentBase(BaseModel):
     parent_id: Optional[int] = None
     order: int = 0
     is_published: bool = False
+    # 文章特有字段
+    summary: Optional[str] = Field(None, max_length=500)
+    author: Optional[str] = Field(None, max_length=100)
+    cover_image: Optional[str] = Field(None, max_length=500)
 
 
 # 内容创建 schema
@@ -34,11 +38,15 @@ class ContentUpdate(BaseModel):
     parent_id: Optional[int] = None
     order: Optional[int] = None
     is_published: Optional[bool] = None
+    summary: Optional[str] = Field(None, max_length=500)
+    author: Optional[str] = Field(None, max_length=100)
+    cover_image: Optional[str] = Field(None, max_length=500)
 
 
 # 内容响应 schema
 class ContentResponse(ContentBase):
     id: int
+    view_count: int = 0
     created_at: datetime
     updated_at: datetime
 

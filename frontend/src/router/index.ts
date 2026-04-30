@@ -1,33 +1,50 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import MainLayout from '@/layouts/MainLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/pages/HomePage.vue')
-    },
-    {
-      path: '/agent-center',
-      name: 'agent-center',
-      component: () => import('@/pages/AgentCenterPage.vue')
-    },
-    {
-      path: '/works',
-      name: 'works',
-      component: () => import('@/pages/WorksPage.vue')
-    },
-    {
-      path: '/works/:id',
-      name: 'work-detail',
-      component: () => import('@/pages/WorkDetailPage.vue')
-    },
-    {
-      path: '/page/:slug',
-      name: 'page',
-      component: () => import('@/pages/PagePage.vue')
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: () => import('@/pages/HomePage.vue')
+        },
+        {
+          path: 'agent-center',
+          name: 'agent-center',
+          component: () => import('@/pages/AgentCenterPage.vue')
+        },
+        {
+          path: 'news',
+          name: 'news-list',
+          component: () => import('@/pages/NewsListPage.vue')
+        },
+        {
+          path: 'news/:id',
+          name: 'news-detail',
+          component: () => import('@/pages/NewsDetailPage.vue')
+        },
+        {
+          path: 'works',
+          name: 'works',
+          component: () => import('@/pages/WorksPage.vue')
+        },
+        {
+          path: 'works/:id',
+          name: 'work-detail',
+          component: () => import('@/pages/WorkDetailPage.vue')
+        },
+        {
+          path: 'page/:slug',
+          name: 'page',
+          component: () => import('@/pages/PagePage.vue')
+        }
+      ]
     },
     {
       path: '/login',
@@ -124,7 +141,6 @@ router.beforeEach(async (to, from, next) => {
       next({ name: 'unauthorized' })
       return
     }
-    // User is logged in, allow access
     next()
     return
   }
