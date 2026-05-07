@@ -10,7 +10,7 @@ onMounted(() => {
     countdown.value--
     if (countdown.value <= 0) {
       clearInterval(timer)
-      router.push('/')
+      router.push('/login')
     }
   }, 1000)
 })
@@ -27,7 +27,7 @@ onMounted(() => {
       <h1 class="text-2xl font-bold text-gray-800 mb-2">未登录</h1>
       <p class="text-gray-500 mb-4">请先登录后再访问管理后台</p>
       <p class="text-sm text-gray-400">
-        <span class="text-blue-600 font-medium">{{ countdown }}</span> 秒后跳转到首页...
+        <span class="text-blue-600 font-medium">{{ countdown }}</span> 秒后跳转到登录页...
       </p>
     </div>
   </div>

@@ -39,20 +39,14 @@ def get_setting(db: Session, key: str, default=None):
     return setting.value if setting and setting.value else default
 
 
-def get_user_today_votes(db: Session, user_id: int) -> int:
-    """获取用户今日投票数"""
-    today = datetime.utcnow().date()
-    tomorrow = today + timedelta(days=1)
-    return db.query(Vote).filter(
-        Vote.user_id == user_id,
-        Vote.created_at >= today,
-        Vote.created_at < tomorrow
-    ).count()
+def get_user_total_votes(db: Session, user_id: int) -> int:
+    """获取用户总投票数"""
+    return db.query(Vote).filter(Vote.user_id == user_id).count()
 
 
-def get_max_votes_per_day(db: Session) -> int:
-    """获取每日最大投票数"""
-    return int(get_setting(db, "max_votes_per_day", 5))
+def get_max_votes(db: Session) -> int:
+    """获取最大投票数"""
+    return int(get_setting(db, "max_votes", 5))
 
 
 def get_max_works_per_team(db: Session) -> int:
@@ -60,25 +54,79 @@ def get_max_works_per_team(db: Session) -> int:
     return int(get_setting(db, "max_works_per_team", 5))
 
 
-def check_registration_open(db: Session) -> bool:
-    """检查报名是否开放"""
+def check_registration_open(db: Session) -> tuple:
+    """检查报名是否开放，返回(是否开放, 错误信息)"""
     reg_start = get_setting(db, "registration_start")
     reg_end = get_setting(db, "registration_end")
-
     now = datetime.utcnow()
-    if reg_start and now < datetime.fromisoformat(reg_start):
-        return False
-    if reg_end and now > datetime.fromisoformat(reg_end):
-        return False
-    return True
+
+    if reg_start:
+        try:
+            start_time = datetime.fromisoformat(reg_start.replace('Z', '+00:00'))
+            if now < start_time.replace(tzinfo=None):
+                return (False, f"报名尚未开始，开始时间：{reg_start}")
+        except:
+            pass
+
+    if reg_end:
+        try:
+            end_time = datetime.fromisoformat(reg_end.replace('Z', '+00:00'))
+            if now > end_time.replace(tzinfo=None):
+                return (False, f"报名已结束，结束时间：{reg_end}")
+        except:
+            pass
+
+    return (True, "")
 
 
-def check_submission_open(db: Session) -> bool:
-    """检查作品提交是否开放"""
-    end = get_setting(db, "submission_end")
-    if end and datetime.utcnow() > datetime.fromisoformat(end):
-        return False
-    return True
+def check_submission_open(db: Session) -> tuple:
+    """检查作品提交是否开放，返回(是否开放, 错误信息)"""
+    sub_start = get_setting(db, "submission_start")
+    sub_end = get_setting(db, "submission_end")
+    now = datetime.utcnow()
+
+    if sub_start:
+        try:
+            start_time = datetime.fromisoformat(sub_start.replace('Z', '+00:00'))
+            if now < start_time.replace(tzinfo=None):
+                return (False, f"作品提交尚未开始，开始时间：{sub_start}")
+        except:
+            pass
+
+    if sub_end:
+        try:
+            end_time = datetime.fromisoformat(sub_end.replace('Z', '+00:00'))
+            if now > end_time.replace(tzinfo=None):
+                return (False, f"作品提交已截止，结束时间：{sub_end}")
+        except:
+            pass
+
+    return (True, "")
+
+
+def check_voting_open(db: Session) -> tuple:
+    """检查投票是否开放，返回(是否开放, 错误信息)"""
+    vote_start = get_setting(db, "voting_start")
+    vote_end = get_setting(db, "voting_end")
+    now = datetime.utcnow()
+
+    if vote_start:
+        try:
+            start_time = datetime.fromisoformat(vote_start.replace('Z', '+00:00'))
+            if now < start_time.replace(tzinfo=None):
+                return (False, f"投票尚未开始，开始时间：{vote_start}")
+        except:
+            pass
+
+    if vote_end:
+        try:
+            end_time = datetime.fromisoformat(vote_end.replace('Z', '+00:00'))
+            if now > end_time.replace(tzinfo=None):
+                return (False, f"投票已结束，结束时间：{vote_end}")
+        except:
+            pass
+
+    return (True, "")
 
 
 async def save_upload_file(file: UploadFile, sub_dir: str, max_size: int) -> str:
@@ -113,12 +161,12 @@ async def get_voting_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取当前用户的投票状态（已投票数、剩余票数、已投票作品等）"""
-    # 获取每日投票上限
-    max_votes_per_day = get_max_votes_per_day(db)
+    """获取当前用户的投票状态"""
+    # 获取最大投票数（0表示不限制）
+    max_votes = get_max_votes(db)
 
-    # 获取今日已投票数
-    today_votes = get_user_today_votes(db, current_user.id)
+    # 获取总投票数
+    total_votes = get_user_total_votes(db, current_user.id)
 
     # 获取已投票的作品列表
     voted_works = db.query(Vote).filter(Vote.user_id == current_user.id).all()
@@ -138,12 +186,19 @@ async def get_voting_status(
     # 获取总作品数（仅已审核通过的作品）
     total_works = db.query(Work).filter(Work.status == "approved").count()
 
+    # 计算剩余票数
+    if max_votes == 0:
+        remaining = "不限制"
+    else:
+        remaining = max(0, max_votes - total_votes)
+
     return {
-        "max_votes_per_day": max_votes_per_day,
-        "used_votes": today_votes,
-        "remaining_votes": max_votes_per_day - today_votes,
+        "max_votes": max_votes,
+        "used_votes": total_votes,
+        "remaining_votes": remaining,
         "voted_works": voted_works_info,
-        "total_works": total_works
+        "total_works": total_works,
+        "voting_open": check_voting_open(db)[0]
     }
 
 
@@ -178,17 +233,7 @@ async def get_works(
     if theme_id:
         query = query.filter(Work.theme_id == theme_id)
 
-    # 如果是普通用户（不是管理员/审核员），只能看到自己和所在队伍的作品
-    if current_user and current_user.role == UserRole.USER:
-        # 获取用户所在的队伍ID列表
-        user_team_ids = db.query(TeamMember.team_id).filter(
-            TeamMember.user_id == current_user.id
-        ).all()
-        team_ids = [t[0] for t in user_team_ids]
-        if team_ids:
-            query = query.filter(Work.team_id.in_(team_ids))
-        else:
-            return PageResponse(total=0, page=page, page_size=page_size, items=[])
+    # 普通用户可以看到所有已审核通过的作品（不需要按队伍过滤）
 
     total = query.count()
     works = query.order_by(Work.vote_count.desc()).offset((page - 1) * page_size).limit(page_size).all()
@@ -252,8 +297,9 @@ async def create_work(
 ):
     """提交作品"""
     # 检查作品提交是否开放
-    if not check_submission_open(db):
-        raise HTTPException(status_code=400, detail="作品提交已截止")
+    sub_open, sub_msg = check_submission_open(db)
+    if not sub_open:
+        raise HTTPException(status_code=400, detail=f"作品提交：{sub_msg}")
 
     # 检查用户是否有队伍
     member = db.query(TeamMember).filter(
@@ -407,6 +453,11 @@ async def vote_work(
     current_user: User = Depends(get_current_active_user)
 ):
     """投票"""
+    # 检查投票是否开放
+    voting_open, voting_msg = check_voting_open(db)
+    if not voting_open:
+        raise HTTPException(status_code=400, detail=f"投票未开放：{voting_msg}")
+
     work = db.query(Work).filter(Work.id == work_id).first()
     if not work:
         raise HTTPException(status_code=404, detail="作品不存在")
@@ -414,12 +465,12 @@ async def vote_work(
     if work.status != WorkStatus.APPROVED:
         raise HTTPException(status_code=400, detail="作品未通过审核")
 
-    # 检查今日投票数
-    max_votes = get_max_votes_per_day(db)
-    today_votes = get_user_today_votes(db, current_user.id)
+    # 检查投票数限制
+    max_votes = get_max_votes(db)
+    total_votes = get_user_total_votes(db, current_user.id)
 
-    if today_votes >= max_votes:
-        raise HTTPException(status_code=400, detail=f"今日投票次数已用完（{max_votes}次/天）")
+    if max_votes > 0 and total_votes >= max_votes:
+        raise HTTPException(status_code=400, detail=f"投票次数已用完（最多{max_votes}票）")
 
     # 检查是否已投过
     existing_vote = db.query(Vote).filter(
@@ -447,12 +498,12 @@ async def get_voting_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取当前用户的投票状态（已投票数、剩余票数、已投票作品等）"""
-    # 获取每日投票上限
-    max_votes_per_day = get_max_votes_per_day(db)
+    """获取当前用户的投票状态"""
+    # 获取最大投票数（0表示不限制）
+    max_votes = get_max_votes(db)
 
-    # 获取今日已投票数
-    today_votes = get_user_today_votes(db, current_user.id)
+    # 获取总投票数
+    total_votes = get_user_total_votes(db, current_user.id)
 
     # 获取已投票的作品列表
     voted_works = db.query(Vote).filter(Vote.user_id == current_user.id).all()
@@ -472,12 +523,19 @@ async def get_voting_status(
     # 获取总作品数（仅已审核通过的作品）
     total_works = db.query(Work).filter(Work.status == "approved").count()
 
+    # 计算剩余票数
+    if max_votes == 0:
+        remaining = "不限制"
+    else:
+        remaining = max(0, max_votes - total_votes)
+
     return {
-        "max_votes_per_day": max_votes_per_day,
-        "used_votes": today_votes,
-        "remaining_votes": max_votes_per_day - today_votes,
+        "max_votes": max_votes,
+        "used_votes": total_votes,
+        "remaining_votes": remaining,
         "voted_works": voted_works_info,
-        "total_works": total_works
+        "total_works": total_works,
+        "voting_open": check_voting_open(db)[0]
     }
 
 

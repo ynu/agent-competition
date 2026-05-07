@@ -11,7 +11,7 @@ const filteredAgents = ref<any[]>([])
 const loading = ref(true)
 const error = ref('')
 const page = ref(1)
-const pageSize = 50
+const pageSize = 24
 
 // Categories list
 const categories = [
@@ -36,6 +36,8 @@ const sort = ref<'latest' | 'popular'>('latest')
 
 // Debounce
 let searchTimeout: number | null = null
+
+const headerClasses = ['work-header-cyan', 'work-header-green', 'work-header-blue', 'work-header-orange']
 
 const totalPages = computed(() => Math.ceil(filteredAgents.value.length / pageSize))
 
@@ -136,154 +138,213 @@ function openAgent(appId: string) {
   window.open(`https://agent.ynu.edu.cn/product/llm/mall/application/${appId}/chat`, '_blank')
 }
 
+function getHeaderClass(index: number): string {
+  return headerClasses[index % headerClasses.length]
+}
+
 watch(keyword, handleKeywordInput)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white py-10">
-      <div class="max-w-7xl mx-auto px-4">
-        <h1 class="text-3xl font-bold mb-2">智能体中心</h1>
-        <p class="text-blue-100 text-sm">同步智能体开放平台上的智能体中心</p>
+  <section class="works-page min-h-[calc(100vh-200px)] bg-white pb-[72px] pt-[24px]">
+    <div class="mx-auto max-w-[1200px] px-[16px]">
+      <div class="works-breadcrumb flex items-center gap-[6px] text-[14px] text-[#666] font-[400]">
+        <i class="iconfont icon-shouye text-[#999999]"></i>
+        <span>您当前位置：</span>
+        <RouterLink to="/" class="text-[#047EFF] hover:underline">首页</RouterLink>
+        <span class="mx-1">/</span>
+        <span>智能体广场</span>
       </div>
-    </div>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <!-- Search and Sort -->
-      <div class="flex flex-col sm:flex-row gap-3 mb-5">
-        <div class="flex-1">
-          <div class="relative">
-            <input
-              v-model="keyword"
-              type="text"
-              placeholder="搜索智能体名称或描述..."
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
+      <!-- 搜索框 -->
+      <div class="mt-[24px] flex justify-center">
+        <div class="relative w-[460px]">
+          <input
+            v-model="keyword"
+            type="text"
+            placeholder="搜索智能体名称或描述..."
+            class="works-search w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-[#f5f5f5]"
+            @keyup.enter="handleKeywordInput"
+          />
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#b8bdc6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
         </div>
-        <div class="flex gap-2">
-          <button
-            @click="handleSortChange('latest')"
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
-            :class="sort === 'latest' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'"
-          >
-            最新上架
-          </button>
-          <button
-            @click="handleSortChange('popular')"
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
-            :class="sort === 'popular' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'"
-          >
-            最受欢迎
-          </button>
-        </div>
+      </div>
+
+      <!-- Sort Buttons -->
+      <div class="mt-[20px] flex justify-center gap-[10px]">
+        <button
+          @click="handleSortChange('latest')"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          :class="sort === 'latest' ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+        >
+          最新上架
+        </button>
+        <button
+          @click="handleSortChange('popular')"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          :class="sort === 'popular' ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+        >
+          最受欢迎
+        </button>
       </div>
 
       <!-- Category Tabs -->
-      <div class="mb-5 flex flex-wrap gap-2">
+      <div class="mt-[20px] flex flex-wrap gap-[10px]">
         <button
           v-for="cat in categories"
           :key="cat.Code"
           @click="selectCategory(cat.Code)"
           class="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-          :class="selectedCategory === cat.Code ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+          :class="selectedCategory === cat.Code ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
         >
           {{ cat.Name }}
         </button>
       </div>
 
       <!-- Results Count -->
-      <div class="text-sm text-gray-500 mb-4">
+      <div class="mt-[20px] text-sm text-gray-500 text-center">
         共 {{ filteredAgents.length }} 个智能体
         <span v-if="keyword"> · 搜索 "{{ keyword }}"</span>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="text-center py-16">
-        <div class="inline-block w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-3 text-gray-500 text-sm">加载中...</p>
+      <div v-if="loading" class="mt-[36px] text-center py-16">
+        <div class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-3 text-gray-500">加载中...</p>
       </div>
 
       <!-- Error -->
-      <div v-else-if="error" class="text-center py-12 bg-white rounded-xl">
+      <div v-else-if="error" class="mt-[36px] text-center py-16">
         <p class="text-red-500 mb-1">{{ error }}</p>
-        <p class="text-gray-400 text-xs">请检查火山引擎 API 配置是否正确</p>
+        <p class="text-gray-400 text-sm">请检查火山引擎 API 配置是否正确</p>
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filteredAgents.length === 0" class="text-center py-16 bg-white rounded-xl">
+      <div v-else-if="filteredAgents.length === 0" class="mt-[36px] text-center py-16">
         <p class="text-gray-500">暂无智能体</p>
-        <p class="text-gray-400 text-xs mt-1">换个关键词试试</p>
+        <p class="text-gray-400 text-sm mt-1">换个关键词试试</p>
       </div>
 
-      <!-- Agent List -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="agent in filteredAgents"
+      <!-- Agent Grid -->
+      <div v-else class="mt-[30px] grid grid-cols-1 gap-x-[34px] gap-y-[36px] sm:grid-cols-2 lg:grid-cols-4">
+        <article
+          v-for="(agent, index) in filteredAgents"
           :key="agent.AppID"
-          class="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+          class="work-card cursor-pointer overflow-hidden rounded-[10px] bg-white shadow-[0_4px_18px_rgba(28,51,84,0.10)] transition-transform duration-200 hover:-translate-y-[4px]"
           @click="openAgent(agent.AppID)"
         >
-          <div class="flex flex-col h-full">
-            <div class="flex-1">
-              <h3 class="font-medium text-gray-800 hover:text-blue-600 transition-colors line-clamp-1">
+          <!-- Header with gradient background -->
+          <div class="relative h-[104px] overflow-hidden" :class="getHeaderClass(index)">
+            <div class="absolute left-[14px] top-[19px] text-[76px] text-white/35 font-[900] leading-none">Ai</div>
+            <div class="flex items-center ml-[60px] mr-[5px] h-full py-[5px] box-border w-[calc(100%-65px)]">
+              <h3 class="relative z-10 line-clamp-4 w-full text-[18px] text-[#005cae] font-[800] leading-[24px]">
                 {{ agent.Name }}
               </h3>
-              <p class="text-gray-500 text-sm mt-1 line-clamp-2 min-h-[2.5rem]">
-                {{ agent.Description || '暂无描述' }}
-              </p>
             </div>
-            <div class="flex flex-wrap items-center gap-1 mt-3">
+          </div>
+
+          <!-- Content -->
+          <div class="px-[18px] pb-[22px] pt-[20px]">
+            <p class="text-[14px] text-[#626b78] leading-[18px] line-clamp-3 min-h-[54px]">
+              {{ agent.Description || '暂无描述' }}
+            </p>
+
+            <!-- Category Tags -->
+            <div class="mt-[12px] flex flex-wrap gap-[6px]">
               <span
-                v-for="cat in agent.CategoryList"
+                v-for="cat in (agent.CategoryList || []).slice(0, 2)"
                 :key="cat.CategoryCode"
                 class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
               >
                 {{ cat.CategoryName }}
               </span>
             </div>
-            <div class="flex items-center gap-4 mt-3 pt-2 border-t border-gray-100 text-xs text-gray-400">
-              <span class="flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                </svg>
+
+            <!-- Stats -->
+            <div class="mt-[16px] flex items-center gap-[20px] text-[13px] text-gray-400">
+              <span class="inline-flex items-center gap-[4px]">
+                <i class="iconfont icon-toupiao text-[14px]"></i>
                 {{ agent.FavoriteCount || 0 }}
               </span>
-              <span class="flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
+              <span class="inline-flex items-center gap-[4px]">
+                <i class="iconfont icon-icon- text-[14px]"></i>
                 {{ agent.UseCount || 0 }}
               </span>
             </div>
           </div>
-        </div>
+        </article>
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex justify-center items-center gap-2 mt-6">
-        <button
-          @click="handlePageChange(page - 1)"
-          :disabled="page === 1"
-          class="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          上一页
-        </button>
-        <span class="px-3 py-1.5 text-sm text-gray-600">
-          {{ page }} / {{ totalPages }}
-        </span>
-        <button
-          @click="handlePageChange(page + 1)"
-          :disabled="page === totalPages"
-          class="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          下一页
-        </button>
+      <div v-if="totalPages > 1" class="mt-[54px] flex justify-center">
+        <el-pagination
+          v-model:current-page="page"
+          background
+          layout="prev, pager, next"
+          :page-size="pageSize"
+          :total="filteredAgents.length"
+          class="works-pagination"
+          @current-change="handlePageChange"
+        />
       </div>
     </div>
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.works-page {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 34%, #ffffff 100%);
+}
+
+.works-breadcrumb {
+  --el-text-color-regular: #8f96a3;
+  --el-color-primary: #1288ff;
+  font-size: 14px;
+}
+
+.work-card {
+  min-height: 280px;
+}
+
+.work-header-cyan {
+  background: linear-gradient(105deg, #d8fbff 0%, #bff9ff 52%, #cff8ff 100%);
+}
+
+.work-header-green {
+  background: linear-gradient(105deg, #d9fff7 0%, #bffbee 52%, #cef9ef 100%);
+}
+
+.work-header-blue {
+  background: linear-gradient(105deg, #d9ebff 0%, #c8dcff 52%, #d8e6ff 100%);
+}
+
+.work-header-orange {
+  background: linear-gradient(105deg, #ffe9d4 0%, #ffd9b8 52%, #ffe4ca 100%);
+}
+
+.works-pagination :deep(.el-pager li),
+.works-pagination :deep(.btn-prev),
+.works-pagination :deep(.btn-next) {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 0;
+  background-color: #f0f1f3;
+  color: #a7adb7;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.works-pagination :deep(.el-pager li.is-active) {
+  background-color: #1288ff;
+  color: #ffffff;
+}
+
+@media (min-width: 1024px) {
+  .works-page > div {
+    max-width: 1190px;
+  }
+}
+</style>

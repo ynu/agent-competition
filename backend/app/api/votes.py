@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
+from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.security import get_current_active_user, require_role
 from app.models.user import User, UserRole
@@ -14,6 +15,19 @@ from app.models.team import Team
 from app.schemas.common import PageResponse
 
 router = APIRouter(prefix="/votes", tags=["投票管理"])
+
+
+class ClearVotesRequest(BaseModel):
+    """清除投票请求"""
+    type: str  # "all", "user", "work"
+    user_id: Optional[int] = None
+    work_id: Optional[int] = None
+
+
+class SetVoteCountRequest(BaseModel):
+    """设置投票数请求"""
+    work_id: int
+    vote_count: int
 
 
 @router.get("", response_model=PageResponse)
@@ -264,3 +278,92 @@ async def get_vote_statistics(
         "top_works": top_works_list,
         "top_users": top_users_list
     }
+
+
+# ============== 投票管理操作 ==============
+
+@router.post("/clear")
+async def clear_votes(
+    request: ClearVotesRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """清除投票记录"""
+    count = 0
+    if request.type == "all":
+        # 清除所有投票
+        count = db.query(Vote).delete()
+        # 重置所有作品的投票数
+        db.query(Work).update({Work.vote_count: 0})
+    elif request.type == "user" and request.user_id:
+        # 清除指定用户的投票
+        user_votes = db.query(Vote).filter(Vote.user_id == request.user_id).all()
+        # 减少对应作品的投票数
+        for vote in user_votes:
+            work = db.query(Work).filter(Work.id == vote.work_id).first()
+            if work and work.vote_count > 0:
+                work.vote_count -= 1
+        count = len(user_votes)
+        db.query(Vote).filter(Vote.user_id == request.user_id).delete()
+    elif request.type == "work" and request.work_id:
+        # 清除指定作品的投票
+        vote_count = db.query(Vote).filter(Vote.work_id == request.work_id).count()
+        db.query(Vote).filter(Vote.work_id == request.work_id).delete()
+        # 重置作品投票数
+        work = db.query(Work).filter(Work.id == request.work_id).first()
+        if work:
+            work.vote_count = 0
+        count = vote_count
+    else:
+        raise HTTPException(status_code=400, detail="无效的清除类型")
+
+    db.commit()
+    return {"message": f"已清除 {count} 条投票记录"}
+
+
+@router.post("/set-vote-count")
+async def set_vote_count(
+    request: SetVoteCountRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """设置作品投票数（用于测试）"""
+    work = db.query(Work).filter(Work.id == request.work_id).first()
+    if not work:
+        raise HTTPException(status_code=404, detail="作品不存在")
+
+    old_count = work.vote_count
+    work.vote_count = request.vote_count
+    db.commit()
+
+    return {
+        "message": f"已设置作品投票数从 {old_count} 为 {request.vote_count}",
+        "work_id": work.id,
+        "work_name": work.name,
+        "old_count": old_count,
+        "new_count": request.vote_count
+    }
+
+
+@router.post("/batch-set-vote-count")
+async def batch_set_vote_count(
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """批量设置作品投票数"""
+    work_ids = body.get("work_ids", [])
+    vote_count = body.get("vote_count", 0)
+
+    if not work_ids:
+        raise HTTPException(status_code=400, detail="请选择作品")
+
+    updated = 0
+    for work_id in work_ids:
+        work = db.query(Work).filter(Work.id == work_id).first()
+        if work:
+            work.vote_count = vote_count
+            updated += 1
+
+    db.commit()
+    return {"message": f"已为 {updated} 个作品设置投票数为 {vote_count}"}

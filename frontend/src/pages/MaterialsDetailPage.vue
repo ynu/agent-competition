@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { contentApi } from '@/api'
+import { useRoute } from 'vue-router'
+import { materialsApi } from '@/api'
 import markdownIt from 'markdown-it'
 
 const route = useRoute()
-const router = useRouter()
-const article = ref<any>(null)
+const material = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
 
@@ -17,8 +16,8 @@ const md = markdownIt({
 })
 
 const renderedContent = computed(() => {
-  if (!article.value?.content) return ''
-  return md.render(article.value.content)
+  if (!material.value?.content) return ''
+  return md.render(material.value.content)
 })
 
 const formatDate = (dateStr: string) => {
@@ -28,17 +27,17 @@ const formatDate = (dateStr: string) => {
 }
 
 onMounted(async () => {
-  await fetchArticle()
+  await fetchMaterial()
 })
 
-async function fetchArticle() {
+async function fetchMaterial() {
   loading.value = true
   try {
-    const id = Number(route.params.id || route.query.id)
-    const res = await contentApi.get(id)
-    article.value = res.data
+    const id = Number(route.params.id)
+    const res = await materialsApi.get(id)
+    material.value = res.data
   } catch (e: any) {
-    error.value = e.response?.data?.detail || e.message || '加载失败'
+    error.value = e.response?.data?.detail || '加载失败'
   } finally {
     loading.value = false
   }
@@ -53,9 +52,9 @@ async function fetchArticle() {
         <span>您当前位置：</span>
         <RouterLink to="/" class="text-[#047eff] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
-        <RouterLink to="/news" class="text-[#047eff] hover:underline">新闻资讯</RouterLink>
+        <RouterLink to="/materials" class="text-[#047eff] hover:underline">课程资料</RouterLink>
         <span class="mx-1">/</span>
-        <span>{{ article?.title || '新闻详情' }}</span>
+        <span>{{ material?.title || '资料详情' }}</span>
       </div>
 
       <!-- Loading -->
@@ -67,34 +66,33 @@ async function fetchArticle() {
       <!-- Error -->
       <div v-else-if="error" class="mt-[36px] text-center py-16">
         <p class="text-red-500">{{ error }}</p>
-        <el-button type="primary" class="mt-4" @click="router.push('/news')">返回列表</el-button>
       </div>
 
       <!-- Content -->
-      <article v-else-if="article" class="mt-[19px] overflow-hidden rounded-[12px] bg-white shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
+      <article v-else-if="material" class="mt-[19px] overflow-hidden rounded-[12px] bg-white shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
         <!-- Header -->
         <div class="relative h-[180px] overflow-hidden bg-[#e7f8ff]">
           <img
-            v-if="article.cover_image"
-            :src="article.cover_image"
+            v-if="material.cover_image"
+            :src="material.cover_image"
             alt=""
             class="absolute inset-0 h-full w-full object-cover"
           />
           <div class="absolute inset-0 bg-gradient-to-r from-[#0066cc]/80 to-[#004385]/80"></div>
           <div class="absolute inset-0 flex flex-col justify-center px-[39px]">
-            <h1 class="text-[28px] font-[800] leading-[34px] text-white">{{ article.title }}</h1>
+            <h1 class="text-[28px] font-[800] leading-[34px] text-white">{{ material.title }}</h1>
             <div class="mt-[15px] flex items-center gap-[31px] text-[16px] leading-[20px] text-white/80">
-              <span v-if="article.author" class="inline-flex items-center gap-[7px]">
+              <span v-if="material.author" class="inline-flex items-center gap-[7px]">
                 <i class="iconfont icon-zongzhiduiwu text-[22px]"></i>
-                {{ article.author }}
+                {{ material.author }}
               </span>
               <span class="inline-flex items-center gap-[7px]">
                 <i class="iconfont icon-shijian text-[22px]"></i>
-                {{ formatDate(article.created_at) }}
+                {{ formatDate(material.created_at) }}
               </span>
               <span class="inline-flex items-center gap-[7px]">
                 <i class="iconfont icon-icon- text-[22px]"></i>
-                {{ article.view_count || 0 }} 浏览
+                {{ material.view_count || 0 }} 浏览
               </span>
             </div>
           </div>
@@ -105,11 +103,6 @@ async function fetchArticle() {
           <div class="article-content detail-scroll" v-html="renderedContent"></div>
         </div>
       </article>
-
-      <!-- Back Button -->
-      <div class="mt-[30px] text-center">
-        <el-button type="primary" round size="large" @click="router.push('/news')">返回列表</el-button>
-      </div>
     </div>
   </section>
 </template>
@@ -211,13 +204,6 @@ async function fetchArticle() {
 
 .article-content :deep(a:hover) {
   text-decoration: underline;
-}
-
-.article-content :deep(img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin: 16px 0;
 }
 
 .article-content :deep(table) {

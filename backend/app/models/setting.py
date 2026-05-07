@@ -15,6 +15,7 @@ class Setting(Base):
     key = Column(String(100), unique=True, index=True, nullable=False, comment="配置键")
     value = Column(Text, nullable=True, comment="配置值")
     description = Column(String(255), nullable=True, comment="说明")
+    sort_order = Column(Integer, default=0, comment="排序顺序")
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 

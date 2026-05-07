@@ -2,7 +2,7 @@
 内容管理 API 路由
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_optional, require_role
@@ -36,6 +36,7 @@ async def get_contents(
     type: Optional[ContentType] = None,
     parent_id: Optional[int] = None,
     is_published: Optional[bool] = None,
+    keyword: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_active_user_optional)
 ):
@@ -47,6 +48,13 @@ async def get_contents(
 
     if parent_id is not None:
         query = query.filter(Content.parent_id == parent_id)
+
+    if keyword:
+        query = query.filter(
+            Content.title.ilike(f"%{keyword}%") |
+            Content.slug.ilike(f"%{keyword}%") |
+            Content.summary.ilike(f"%{keyword}%")
+        )
 
     # 如果 is_published 显式传递了值（包括 false），使用该值过滤
     # 如果没有传递，则：
@@ -133,6 +141,37 @@ async def get_latest_articles(
     ).order_by(Content.created_at.desc()).limit(limit).all()
 
     return [ContentResponse.model_validate(a) for a in articles]
+
+
+@router.get("/materials", response_model=PageResponse)
+async def get_materials(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    keyword: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取课程资料列表"""
+    query = db.query(Content).filter(
+        Content.type == ContentType.PAGE,
+        Content.is_published == True
+    )
+
+    if keyword:
+        query = query.filter(
+            Content.title.ilike(f"%{keyword}%") |
+            Content.summary.ilike(f"%{keyword}%")
+        )
+
+    total = query.count()
+    materials = query.order_by(Content.order, Content.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return PageResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[ContentResponse.model_validate(m) for m in materials]
+    )
 
 
 @router.get("/slug/{slug}", response_model=ContentResponse)
@@ -291,3 +330,23 @@ async def generate_static_page(
             f"生成静态页面: {content.slug}.html")
 
     return {"message": "静态页面生成成功", "path": f"/static/{content.slug}.html"}
+
+
+# ============== 内容排序 ==============
+
+@router.put("/reorder")
+async def reorder_contents(
+    body: dict = Body(..., description="内容ID列表，按新顺序排列"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REVIEWER))
+):
+    """批量更新内容排序"""
+    content_ids = body.get("content_ids", [])
+
+    for i, content_id in enumerate(content_ids):
+        content = db.query(Content).filter(Content.id == content_id).first()
+        if content:
+            content.order = i
+
+    db.commit()
+    return {"message": "排序已更新"}

@@ -16,23 +16,29 @@ from app.schemas.common import SettingCreate, SettingUpdate, SettingResponse, Pa
 
 router = APIRouter(prefix="/settings", tags=["配置管理"])
 
-# 默认配置项
+# 默认配置项（按类别分组 + 排序）
 DEFAULT_SETTINGS = {
-    "max_votes_per_day": {"value": "5", "description": "每人每天投票数"},
-    "max_team_members": {"value": "5", "description": "队伍最大成员数"},
-    "max_works_per_team": {"value": "5", "description": "每队最大作品数"},
-    "registration_start": {"value": "", "description": "报名开始时间 (ISO格式)"},
-    "registration_end": {"value": "", "description": "报名结束时间 (ISO格式)"},
-    "submission_end": {"value": "", "description": "作品提交截止时间 (ISO格式)"},
-    "competition_theme": {"value": "", "description": "智能体主题名称"},
-    "competition_description": {"value": "", "description": "智能体主题描述"},
-    # 使用旧的逗号分隔格式作为默认值，后续会在ensure中转换为JSON
-    "themes": {"value": "智能问答,Agent工作流,多智能体协作,智能客服,数据分析,内容生成", "description": "作品主题选项(逗号分隔)"},
-    # CAS 2.0 配置
-    "cas_enabled": {"value": "true", "description": "是否启用统一身份认证"},
-    "cas_base_url": {"value": "https://ids.ynu.edu.cn/authserver", "description": "CAS服务地址"},
-    # 应用基础URL
-    "base_url": {"value": "http://localhost:5173", "description": "应用基础URL，用于统一身份认证回调"},
+    # ========== 基础限制 ==========
+    "max_votes": {"value": "5", "description": "Max votes per user (0 = unlimited)", "sort_order": 10},
+    "max_team_members": {"value": "5", "description": "Max team members", "sort_order": 11},
+    "max_works_per_team": {"value": "5", "description": "Max works per team", "sort_order": 12},
+    # ========== 报名时间 ==========
+    "registration_start": {"value": "", "description": "Registration start time (ISO format, empty = no limit)", "sort_order": 20},
+    "registration_end": {"value": "", "description": "Registration end time (ISO format, empty = no limit)", "sort_order": 21},
+    # ========== 作品提交时间 ==========
+    "submission_start": {"value": "", "description": "Submission start time (ISO format, empty = no limit)", "sort_order": 30},
+    "submission_end": {"value": "", "description": "Submission end time (ISO format, empty = no limit)", "sort_order": 31},
+    # ========== 投票时间 ==========
+    "voting_start": {"value": "", "description": "Voting start time (ISO format, empty = no limit)", "sort_order": 40},
+    "voting_end": {"value": "", "description": "Voting end time (ISO format, empty = no limit)", "sort_order": 41},
+    # ========== 大赛信息 ==========
+    "competition_theme": {"value": "", "description": "Competition theme name", "sort_order": 50},
+    "competition_description": {"value": "", "description": "Competition theme description", "sort_order": 51},
+    "themes": {"value": "智能问答,Agent工作流,多智能体协作,智能客服,数据分析,内容生成", "description": "Work themes (comma-separated)", "sort_order": 52},
+    # ========== 统一身份认证 ==========
+    "cas_enabled": {"value": "true", "description": "Enable CAS authentication", "sort_order": 60},
+    "cas_base_url": {"value": "https://ids.ynu.edu.cn/authserver", "description": "CAS server URL", "sort_order": 61},
+    "base_url": {"value": "http://localhost:5173", "description": "Application base URL (for CAS callback)", "sort_order": 62},
 }
 
 
@@ -46,19 +52,33 @@ class ThemeItem(BaseModel):
 
 def ensure_default_settings(db: Session):
     """确保默认配置存在"""
-    # 首先处理Setting表
     for key, config in DEFAULT_SETTINGS.items():
         existing = db.query(Setting).filter(Setting.key == key).first()
         if not existing:
-            setting = Setting(key=key, value=config["value"], description=config["description"])
+            setting = Setting(
+                key=key,
+                value=config["value"],
+                description=config["description"],
+                sort_order=config.get("sort_order", 99)
+            )
             db.add(setting)
+
+    # 更新现有配置的 sort_order
+    for key, config in DEFAULT_SETTINGS.items():
+        setting = db.query(Setting).filter(Setting.key == key).first()
+        if setting and setting.sort_order != config.get("sort_order", 99):
+            setting.sort_order = config.get("sort_order", 99)
+
+    # 删除旧配置 max_votes_per_day
+    old_setting = db.query(Setting).filter(Setting.key == "max_votes_per_day").first()
+    if old_setting:
+        db.delete(old_setting)
 
     db.commit()
 
     # 确保CompetitionTheme表有默认数据
     theme_count = db.query(CompetitionTheme).count()
     if theme_count == 0:
-        # 创建默认主题
         default_themes = [
             "智能问答", "Agent工作流", "多智能体协作", "智能客服", "数据分析", "内容生成"
         ]
@@ -86,7 +106,7 @@ async def get_settings(
         query = query.filter(Setting.key.contains(keyword))
 
     total = query.count()
-    settings = query.order_by(Setting.key).offset((page - 1) * page_size).limit(page_size).all()
+    settings = query.order_by(Setting.sort_order, Setting.key).offset((page - 1) * page_size).limit(page_size).all()
 
     return PageResponse(
         total=total,

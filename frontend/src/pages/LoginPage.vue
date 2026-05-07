@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -9,9 +9,12 @@ const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
-const loginMode = ref<'password' | 'unified'>('password')
+const showPasswordTab = ref(false)
 const error = ref('')
 const loading = ref(false)
+
+// Default: show only unified auth, show both when ?localAccount=true
+const showBothTabs = computed(() => route.query.localAccount === 'true')
 
 onMounted(() => {
   // Check if there's a token in URL (from CAS callback)
@@ -23,6 +26,11 @@ onMounted(() => {
     const redirect = route.query.redirect as string || '/admin'
     window.location.href = redirect
   }
+
+  // Default to unified auth if not showing both tabs
+  if (!showBothTabs.value) {
+    showPasswordTab.value = false
+  }
 })
 
 async function handleLogin() {
@@ -30,11 +38,7 @@ async function handleLogin() {
   loading.value = true
 
   try {
-    if (loginMode.value === 'password') {
-      await authStore.login(username.value, password.value)
-    }
-    // Unified auth is handled by redirect to CAS
-
+    await authStore.login(username.value, password.value)
     const redirect = route.query.redirect as string || '/admin'
     router.push(redirect)
   } catch (e: any) {
@@ -70,19 +74,19 @@ function handleCasLogin() {
 
       <!-- Login Card -->
       <div class="bg-white rounded-2xl shadow-2xl p-8">
-        <!-- Login Mode Toggle -->
-        <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+        <!-- Login Mode Toggle (only show if showBothTabs) -->
+        <div v-if="showBothTabs" class="flex bg-gray-100 rounded-xl p-1 mb-6">
           <button
-            @click="loginMode = 'password'"
+            @click="showPasswordTab = true"
             class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-            :class="loginMode === 'password' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="showPasswordTab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
           >
             账号密码登录
           </button>
           <button
-            @click="loginMode = 'unified'"
+            @click="showPasswordTab = false"
             class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-            :class="loginMode === 'unified' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            :class="!showPasswordTab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
           >
             统一身份认证
           </button>
@@ -90,7 +94,7 @@ function handleCasLogin() {
 
         <form @submit.prevent="handleLogin" class="space-y-5">
           <!-- Password Login -->
-          <template v-if="loginMode === 'password'">
+          <template v-if="showBothTabs && showPasswordTab">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">用户名/学工号</label>
               <div class="relative">
@@ -108,6 +112,7 @@ function handleCasLogin() {
                 />
               </div>
             </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
               <div class="relative">
@@ -127,27 +132,23 @@ function handleCasLogin() {
             </div>
           </template>
 
-          <!-- Unified Auth Login -->
+          <!-- Unified Auth / Default content -->
           <template v-else>
-            <div class="text-center py-8">
-              <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
-                </svg>
-              </div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">统一身份认证登录</h3>
+            <div v-if="!showBothTabs" class="text-center py-4 mb-2">
               <p class="text-sm text-gray-500 mb-6">使用学校统一身份认证账号登录，首次登录将自动创建用户</p>
-              <button
-                type="button"
-                @click="handleCasLogin"
-                class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                </svg>
-                使用统一身份认证登录
-              </button>
             </div>
+
+            <!-- Unified Auth Button -->
+            <button
+              type="button"
+              @click="handleCasLogin"
+              class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+              </svg>
+              使用统一身份认证登录
+            </button>
           </template>
 
           <!-- Error Message -->
@@ -158,9 +159,9 @@ function handleCasLogin() {
             {{ error }}
           </div>
 
-          <!-- Submit Button -->
+          <!-- Submit Button (password login) -->
           <button
-            v-if="loginMode === 'password'"
+            v-if="showPasswordTab"
             type="submit"
             :disabled="loading"
             class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

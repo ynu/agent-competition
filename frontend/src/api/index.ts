@@ -141,3 +141,11 @@ export const agentCenterApi = {
   listAgents: (params?: { page?: number; page_size?: number; category?: string; keyword?: string; sort?: string }) =>
     api.get('/agent-center', { params })
 }
+
+// Materials APIs (课程资料)
+export const materialsApi = {
+  list: (params?: { page?: number; page_size?: number; keyword?: string }) =>
+    api.get('/contents/materials', { params }),
+  get: (id: number) => api.get(`/contents/${id}`),
+  getBySlug: (slug: string) => api.get(`/contents/slug/${slug}`)
+}

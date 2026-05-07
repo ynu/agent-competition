@@ -30,6 +30,16 @@ const router = createRouter({
           component: () => import('@/pages/NewsDetailPage.vue')
         },
         {
+          path: 'materials',
+          name: 'materials',
+          component: () => import('@/pages/MaterialsListPage.vue')
+        },
+        {
+          path: 'materials/:id',
+          name: 'materials-detail',
+          component: () => import('@/pages/MaterialsDetailPage.vue')
+        },
+        {
           path: 'works',
           name: 'works',
           component: () => import('@/pages/WorksPage.vue')
@@ -43,6 +53,11 @@ const router = createRouter({
           path: 'page/:slug',
           name: 'page',
           component: () => import('@/pages/PagePage.vue')
+        },
+        {
+          path: 'contact',
+          name: 'contact',
+          component: () => import('@/pages/ContactPage.vue')
         }
       ]
     },

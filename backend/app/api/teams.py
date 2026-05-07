@@ -40,6 +40,37 @@ def get_max_team_members(db: Session) -> int:
     return int(setting.value) if setting and setting.value else 5
 
 
+def check_registration_open(db: Session) -> tuple:
+    """检查报名是否开放，返回(是否开放, 错误信息)"""
+    from datetime import datetime
+    from app.models.setting import Setting
+
+    setting_start = db.query(Setting).filter(Setting.key == "registration_start").first()
+    setting_end = db.query(Setting).filter(Setting.key == "registration_end").first()
+
+    reg_start = setting_start.value if setting_start and setting_start.value else None
+    reg_end = setting_end.value if setting_end and setting_end.value else None
+    now = datetime.utcnow()
+
+    if reg_start:
+        try:
+            start_time = datetime.fromisoformat(reg_start.replace('Z', '+00:00'))
+            if now < start_time.replace(tzinfo=None):
+                return (False, f"报名尚未开始，开始时间：{reg_start}")
+        except:
+            pass
+
+    if reg_end:
+        try:
+            end_time = datetime.fromisoformat(reg_end.replace('Z', '+00:00'))
+            if now > end_time.replace(tzinfo=None):
+                return (False, f"报名已结束，结束时间：{reg_end}")
+        except:
+            pass
+
+    return (True, "")
+
+
 @router.get("", response_model=PageResponse)
 async def get_teams(
     page: int = Query(1, ge=1),
@@ -110,6 +141,11 @@ async def create_team(
     current_user: User = Depends(get_current_active_user)
 ):
     """创建队伍（普通用户）"""
+    # 检查报名是否开放
+    reg_open, reg_msg = check_registration_open(db)
+    if not reg_open:
+        raise HTTPException(status_code=400, detail=f"创建队伍：{reg_msg}")
+
     # 检查队伍名是否已存在
     if db.query(Team).filter(Team.name == team_data.name).first():
         raise HTTPException(status_code=400, detail="队伍名已存在")

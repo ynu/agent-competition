@@ -32,15 +32,27 @@ const clearingData = ref(false)
 const formData = ref<Record<string, string>>({})
 
 const settingDescriptions: Record<string, { label: string; desc: string; type: string; placeholder?: string }> = {
-  max_votes_per_day: { label: '每日投票数', desc: '限制每位用户每天可投票的数量', type: 'number', placeholder: '5' },
-  max_team_members: { label: '队伍最大人数', desc: '每支队伍允许的最大成员数量', type: 'number', placeholder: '5' },
-  max_works_per_team: { label: '每队作品数', desc: '每支队伍可提交的作品数量上限', type: 'number', placeholder: '1' },
-  registration_start: { label: '报名开始时间', desc: '报名开始时间 (ISO 8601格式)', type: 'datetime-local', placeholder: '2024-01-01T00:00' },
-  registration_end: { label: '报名结束时间', desc: '报名结束时间 (ISO 8601格式)', type: 'datetime-local', placeholder: '2024-12-31T23:59' },
-  submission_end: { label: '作品提交截止', desc: '作品提交截止时间 (ISO 8601格式)', type: 'datetime-local', placeholder: '2024-12-31T23:59' },
-  base_url: { label: '应用基础URL', desc: '用于统一身份认证回调，线上环境请填写公网可访问的地址', type: 'text', placeholder: 'https://your-domain.com' },
-  cas_enabled: { label: '启用CAS认证', desc: '是否启用CAS 2.0统一身份认证', type: 'text', placeholder: 'true/false' },
-  cas_base_url: { label: 'CAS服务地址', desc: '统一身份认证服务器地址', type: 'text', placeholder: 'https://ids.ynu.edu.cn/authserver' }
+  // ========== 基础限制 ==========
+  max_votes: { label: 'Max Votes Per User', desc: 'Maximum votes per user (0 = unlimited)', type: 'number', placeholder: '5' },
+  max_team_members: { label: 'Max Team Members', desc: 'Maximum members allowed per team', type: 'number', placeholder: '5' },
+  max_works_per_team: { label: 'Max Works Per Team', desc: 'Maximum works allowed per team', type: 'number', placeholder: '5' },
+  // ========== 报名时间 ==========
+  registration_start: { label: 'Registration Start', desc: 'Registration start time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-01-01T00:00' },
+  registration_end: { label: 'Registration End', desc: 'Registration end time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-12-31T23:59' },
+  // ========== 作品提交时间 ==========
+  submission_start: { label: 'Submission Start', desc: 'Work submission start time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-01-01T00:00' },
+  submission_end: { label: 'Submission End', desc: 'Work submission end time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-12-31T23:59' },
+  // ========== 投票时间 ==========
+  voting_start: { label: 'Voting Start', desc: 'Voting start time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-01-01T00:00' },
+  voting_end: { label: 'Voting End', desc: 'Voting end time (ISO format, empty = no limit)', type: 'datetime-local', placeholder: '2024-12-31T23:59' },
+  // ========== 大赛信息 ==========
+  competition_theme: { label: 'Competition Theme', desc: 'Competition theme name', type: 'text', placeholder: '智能体创新大赛' },
+  competition_description: { label: 'Competition Description', desc: 'Competition theme description', type: 'text', placeholder: 'Competition description...' },
+  themes: { label: 'Work Themes', desc: 'Work themes (comma-separated)', type: 'text', placeholder: '智能问答,Agent工作流...' },
+  // ========== 统一身份认证 ==========
+  cas_enabled: { label: 'Enable CAS', desc: 'Enable CAS 2.0 unified authentication (true/false)', type: 'text', placeholder: 'true/false' },
+  cas_base_url: { label: 'CAS Server URL', desc: 'CAS server address', type: 'text', placeholder: 'https://ids.ynu.edu.cn/authserver' },
+  base_url: { label: 'Application Base URL', desc: 'For CAS callback, must be publicly accessible in production', type: 'text', placeholder: 'https://your-domain.com' },
 }
 
 onMounted(async () => {
@@ -269,7 +281,7 @@ async function handleClearData() {
       </div>
       <div v-else class="space-y-4">
         <div
-          v-for="setting in settings.filter(s => !s.key.includes('theme') && s.key !== 'competition_theme' && s.key !== 'competition_description')"
+          v-for="setting in settings.filter(s => !s.key.includes('theme') && s.key !== 'themes')"
           :key="setting.id"
           class="flex flex-col md:flex-row md:items-center gap-4 p-4 bg-gray-50 rounded-xl hover:shadow-sm transition-shadow"
         >

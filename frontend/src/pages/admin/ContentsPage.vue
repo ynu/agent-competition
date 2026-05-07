@@ -13,6 +13,9 @@ const page = ref(1)
 const total = ref(0)
 const pageSize = 20
 const typeFilter = ref('')
+const keyword = ref('')
+const publishedFilter = ref('')
+const dragIndex = ref(-1)
 
 const showModal = ref(false)
 const previewMode = ref(false)
@@ -47,6 +50,12 @@ const typeOptions = [
   { value: 'article', label: '文章' }
 ]
 
+const publishedOptions = [
+  { value: '', label: '全部状态' },
+  { value: 'true', label: '已发布' },
+  { value: 'false', label: '草稿' }
+]
+
 const formTypeOptions = [
   { value: 'page', label: '页面' },
   { value: 'category', label: '栏目' },
@@ -65,7 +74,8 @@ async function fetchContents() {
         page: page.value,
         page_size: pageSize,
         type: typeFilter.value || undefined,
-        is_published: undefined
+        keyword: keyword.value || undefined,
+        is_published: publishedFilter.value === '' ? undefined : publishedFilter.value === 'true'
       }
     })
     contents.value = res.data.items || []
@@ -86,7 +96,7 @@ function openCreate() {
     content: '',
     content_format: 'markdown',
     is_published: false,
-    order: 0,
+    order: contents.value.length,
     summary: '',
     author: '',
     cover_image: ''
@@ -104,7 +114,7 @@ function openEdit(content: any) {
     content: content.content || '',
     content_format: content.content_format,
     is_published: content.is_published,
-    order: content.order,
+    order: content.order || 0,
     summary: content.summary || '',
     author: content.author || '',
     cover_image: content.cover_image || ''
@@ -170,6 +180,71 @@ function getTypeClass(type: string) {
   }
   return map[type] || 'bg-gray-100 text-gray-700'
 }
+
+// Drag and drop sorting
+function onDragStart(index: number) {
+  dragIndex.value = index
+}
+
+function onDragOver(e: DragEvent, index: number) {
+  e.preventDefault()
+  if (dragIndex.value !== index && dragIndex.value !== -1) {
+    const items = document.querySelectorAll('[data-draggable="true"]')
+    items.forEach((item, i) => {
+      if (i === index) {
+        item.classList.add('bg-blue-50', 'border-blue-300')
+      } else {
+        item.classList.remove('bg-blue-50', 'border-blue-300')
+      }
+    })
+  }
+}
+
+async function onDrop(index: number) {
+  if (dragIndex.value !== -1 && dragIndex.value !== index) {
+    const item = contents.value.splice(dragIndex.value, 1)[0]
+    contents.value.splice(index, 0, item)
+    // Save new order to backend
+    try {
+      await api.put('/contents/reorder', {
+        content_ids: contents.value.map((c: any) => c.id)
+      })
+      success('排序已更新')
+    } catch (e: any) {
+      error('保存排序失败', e.response?.data?.detail)
+      await fetchContents()
+    }
+  }
+  dragIndex.value = -1
+}
+
+function onDragEnd() {
+  dragIndex.value = -1
+}
+
+async function updateContentOrder(content: any, newOrder: number) {
+  try {
+    await api.put(`/contents/${content.id}`, { order: newOrder })
+    success('排序已更新')
+    await fetchContents()
+  } catch (e: any) {
+    error('更新失败', e.response?.data?.detail)
+  }
+}
+
+function moveUp(content: any, index: number) {
+  if (index > 0) {
+    const newOrder = contents.value[index - 1].order + 1
+    updateContentOrder(content, newOrder)
+  }
+}
+
+function moveDown(content: any, index: number) {
+  if (index < contents.value.length - 1) {
+    const newOrder = contents.value[index + 1].order - 1
+    updateContentOrder(content, newOrder)
+  }
+}
 </script>
 
 <template>
@@ -195,7 +270,14 @@ function getTypeClass(type: string) {
 
     <!-- Filters -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-      <div class="flex gap-4">
+      <div class="flex flex-wrap gap-4">
+        <input
+          v-model="keyword"
+          @keyup.enter="fetchContents"
+          type="text"
+          placeholder="搜索标题/slug..."
+          class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-w-[200px]"
+        />
         <select
           v-model="typeFilter"
           class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white min-w-[140px]"
@@ -203,6 +285,26 @@ function getTypeClass(type: string) {
         >
           <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
+        <select
+          v-model="publishedFilter"
+          class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white min-w-[140px]"
+          @change="fetchContents"
+        >
+          <option v-for="opt in publishedOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+        <button
+          @click="fetchContents"
+          class="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-medium"
+        >
+          搜索
+        </button>
+        <button
+          v-if="keyword || typeFilter || publishedFilter"
+          @click="keyword = ''; typeFilter = ''; publishedFilter = ''; fetchContents()"
+          class="px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-medium text-gray-600"
+        >
+          重置
+        </button>
       </div>
     </div>
 
@@ -211,6 +313,7 @@ function getTypeClass(type: string) {
       <table class="w-full">
         <thead>
           <tr class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">排序</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">标题</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Slug</th>
@@ -221,10 +324,32 @@ function getTypeClass(type: string) {
         </thead>
         <tbody class="divide-y divide-gray-100">
           <tr
-            v-for="content in contents"
+            v-for="(content, index) in contents"
             :key="content.id"
             class="hover:bg-blue-50/50 transition-colors"
+            data-draggable="true"
+            :class="{ 'bg-blue-50 border-blue-300': dragIndex === index }"
+            draggable="true"
+            @dragstart="onDragStart(index)"
+            @dragover="onDragOver($event, index)"
+            @drop="onDrop(index)"
+            @dragend="onDragEnd"
           >
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-1">
+                <button @click="moveUp(content, index)" :disabled="index === 0" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                  </svg>
+                </button>
+                <span class="text-xs text-gray-400 w-6 text-center">{{ index + 1 }}</span>
+                <button @click="moveDown(content, index)" :disabled="index === contents.length - 1" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ content.id }}</td>
             <td class="px-6 py-4 text-sm text-gray-800 font-medium">{{ content.title }}</td>
             <td class="px-6 py-4 text-sm text-gray-600 font-mono text-xs">{{ content.slug }}</td>

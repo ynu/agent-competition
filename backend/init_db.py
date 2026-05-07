@@ -64,23 +64,35 @@ def main():
         else:
             print("Admin user already exists.")
 
-        # Initialize default settings
+        # Initialize default settings (按类别分组 + 排序)
         default_settings = {
-            "max_votes_per_day": ("5", "每人每天投票数"),
-            "max_team_members": ("5", "队伍最大成员数"),
-            "max_works_per_team": ("5", "每队最大作品数"),
-            "themes": ("智能问答,Agent工作流,多智能体协作,智能客服,数据分析,内容生成", "作品主题选项(逗号分隔)"),
-            "registration_start": ("", "报名开始时间 (ISO格式)"),
-            "registration_end": ("", "报名结束时间 (ISO格式)"),
-            "submission_end": ("", "作品提交截止时间 (ISO格式)"),
-            "competition_theme": ("智能体创新大赛", "智能体主题名称"),
-            "competition_description": ("激发创意，展现智能体开发的无限可能", "智能体主题描述")
+            # ========== 基础限制 ==========
+            "max_votes": ("5", "Max votes per user (0 = unlimited)", 10),
+            "max_team_members": ("5", "Max team members", 11),
+            "max_works_per_team": ("5", "Max works per team", 12),
+            # ========== 报名时间 ==========
+            "registration_start": ("", "Registration start time (ISO format, empty = no limit)", 20),
+            "registration_end": ("", "Registration end time (ISO format, empty = no limit)", 21),
+            # ========== 作品提交时间 ==========
+            "submission_start": ("", "Submission start time (ISO format, empty = no limit)", 30),
+            "submission_end": ("", "Submission end time (ISO format, empty = no limit)", 31),
+            # ========== 投票时间 ==========
+            "voting_start": ("", "Voting start time (ISO format, empty = no limit)", 40),
+            "voting_end": ("", "Voting end time (ISO format, empty = no limit)", 41),
+            # ========== 大赛信息 ==========
+            "competition_theme": ("智能体创新大赛", "Competition theme name", 50),
+            "competition_description": ("激发创意，展现智能体开发的无限可能", "Competition theme description", 51),
+            "themes": ("智能问答,Agent工作流,多智能体协作,智能客服,数据分析,内容生成", "Work themes (comma-separated)", 52),
+            # ========== 统一身份认证 ==========
+            "cas_enabled": ("true", "Enable CAS authentication", 60),
+            "cas_base_url": ("https://ids.ynu.edu.cn/authserver", "CAS server URL", 61),
+            "base_url": ("http://localhost:5173", "Application base URL (for CAS callback)", 62),
         }
 
-        for key, (value, desc) in default_settings.items():
+        for key, (value, desc, sort_order) in default_settings.items():
             existing = db.query(Setting).filter(Setting.key == key).first()
             if not existing:
-                setting = Setting(key=key, value=value, description=desc)
+                setting = Setting(key=key, value=value, description=desc, sort_order=sort_order)
                 db.add(setting)
 
         db.commit()

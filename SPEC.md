@@ -354,14 +354,21 @@ class ContentFormat(str, Enum):
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| max_votes_per_day | 5 | 每人每天投票数 |
+| max_votes | 5 | 每人最大投票数（0表示不限制） |
 | max_team_members | 5 | 队伍最大成员数 |
 | max_works_per_team | 5 | 每队最大作品数 |
+| registration_start | - | 报名开始时间 (ISO格式) |
+| registration_end | - | 报名结束时间 (ISO格式) |
+| submission_start | - | 作品提交开始时间 (ISO格式) |
+| submission_end | - | 作品提交截止时间 (ISO格式) |
+| voting_start | - | 投票开始时间 (ISO格式) |
+| voting_end | - | 投票结束时间 (ISO格式) |
 | competition_theme | 智能体创新大赛 | 主题名称 |
 | competition_description | - | 主题描述 |
-| registration_start | - | 报名开始时间 |
-| registration_end | - | 报名结束时间 |
-| submission_end | - | 作品提交截止时间 |
+| themes | 智能问答,Agent工作流,... | 作品主题选项(逗号分隔) |
+| cas_enabled | true | 是否启用统一身份认证 |
+| cas_base_url | https://ids.ynu.edu.cn/authserver | CAS服务地址 |
+| base_url | http://localhost:5173 | 应用基础URL |
 
 #### 5.2.8 日志管理 (/admin/logs)
 - 日志列表（分页）

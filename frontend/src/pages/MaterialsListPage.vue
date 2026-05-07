@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { contentApi } from '@/api'
+import { materialsApi } from '@/api'
 
 const router = useRouter()
-const articles = ref<any[]>([])
+const materials = ref<any[]>([])
 const loading = ref(true)
 const currentPage = ref(1)
-const pageSize = 8
+const pageSize = 10
 const total = ref(0)
 
 const formatDate = (dateStr: string) => {
@@ -19,28 +19,28 @@ const formatDate = (dateStr: string) => {
   }
 }
 
-const openArticle = (article: any) => {
-  router.push(`/news/${article.id}`)
+const openMaterial = (material: any) => {
+  router.push(`/materials/${material.id}`)
 }
 
 const handlePageChange = (page: number) => {
   currentPage.value = page
-  fetchArticles()
+  fetchMaterials()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 onMounted(async () => {
-  await fetchArticles()
+  await fetchMaterials()
 })
 
-async function fetchArticles() {
+async function fetchMaterials() {
   loading.value = true
   try {
-    const res = await contentApi.articles({ page: currentPage.value, page_size: pageSize })
-    articles.value = res.data?.items || []
+    const res = await materialsApi.list({ page: currentPage.value, page_size: pageSize })
+    materials.value = res.data?.items || []
     total.value = res.data?.total || 0
   } catch (e: any) {
-    console.error('Articles error:', e)
+    console.error('Materials error:', e)
   } finally {
     loading.value = false
   }
@@ -55,7 +55,7 @@ async function fetchArticles() {
         <span>您当前位置：</span>
         <RouterLink to="/" class="text-[#047eff] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
-        <span>新闻列表</span>
+        <span>课程资料</span>
       </div>
 
       <!-- Loading -->
@@ -64,39 +64,39 @@ async function fetchArticles() {
         <p class="mt-3 text-gray-500">加载中...</p>
       </div>
 
-      <!-- Article List -->
+      <!-- Materials List -->
       <div v-else class="mt-[36px]">
         <button
-          v-for="article in articles"
-          :key="article.id"
+          v-for="material in materials"
+          :key="material.id"
           type="button"
           class="article-item group grid w-full grid-cols-[80px_1fr] gap-[22px] border-0 border-b border-dashed border-[#e1e1e1] bg-transparent pb-[16px] pt-[16px] text-left first:pt-0"
-          @click="openArticle(article)"
+          @click="openMaterial(material)"
         >
           <time
             class="flex h-[74px] w-[80px] flex-col items-center justify-center text-white transition-colors duration-200 bg-[#b4b4b4] group-hover:bg-[#087fff]"
-            :datetime="article.created_at"
+            :datetime="material.created_at"
           >
-            <span class="text-[28px] font-[700] leading-[32px]">{{ formatDate(article.created_at).day }}</span>
-            <span class="mt-[8px] text-[16px] leading-[18px]">{{ formatDate(article.created_at).month }}</span>
+            <span class="text-[28px] font-[700] leading-[32px]">{{ formatDate(material.created_at).day }}</span>
+            <span class="mt-[8px] text-[16px] leading-[18px]">{{ formatDate(material.created_at).month }}</span>
           </time>
 
           <div class="min-w-0 pt-[4px]">
             <h2
               class="line-clamp-1 text-[16px] font-[500] leading-[24px] transition-colors duration-200 text-[#202020] group-hover:text-[#007dff]"
             >
-              {{ article.title }}
+              {{ material.title }}
             </h2>
             <p class="mt-[8px] line-clamp-2 text-[12px] leading-[20px] text-[#999]">
-              {{ article.summary || article.content?.substring(0, 150) || '暂无摘要' }}
+              {{ material.summary || material.content?.substring(0, 150) || '暂无简介' }}
             </p>
           </div>
         </button>
 
         <!-- Empty State -->
-        <div v-if="articles.length === 0" class="text-center py-16">
-          <p class="text-gray-500">暂无新闻资讯</p>
-          <p class="text-gray-400 text-sm mt-1">请在后台添加新闻资讯</p>
+        <div v-if="materials.length === 0" class="text-center py-16">
+          <p class="text-gray-500">暂无课程资料</p>
+          <p class="text-gray-400 text-sm mt-1">请在后台添加课程资料</p>
         </div>
       </div>
 
@@ -118,8 +118,16 @@ async function fetchArticles() {
 
 <style scoped>
 .article-list-breadcrumb {
+  --el-text-color-regular: #777777;
+  --el-color-primary: #047eff;
   font-size: 14px;
   line-height: 20px;
+}
+
+.article-list-breadcrumb :deep(.el-breadcrumb__inner),
+.article-list-breadcrumb :deep(.el-breadcrumb__separator) {
+  color: #777777;
+  font-weight: 400;
 }
 
 .article-item {
