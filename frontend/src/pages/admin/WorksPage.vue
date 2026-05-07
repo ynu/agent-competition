@@ -72,7 +72,7 @@ async function fetchUserTeam() {
 async function fetchWorks() {
   loading.value = true
   try {
-    const res = await api.get('/works', {
+    const res = await api.get('/works/admin/list', {
       params: {
         page: page.value,
         page_size: pageSize,
@@ -449,9 +449,17 @@ function handleSearch() {
                   {{ work.status === 'pending' ? '待审核' : work.status === 'approved' ? '已通过' : '已拒绝' }}
                 </span>
                 <span class="text-gray-300">|</span>
-                <button @click="openEdit(work)" class="text-green-600 hover:text-green-700 font-medium transition-colors">编辑</button>
-                <span class="text-gray-300">|</span>
-                <button @click="handleDelete(work)" class="text-red-600 hover:text-red-700 font-medium transition-colors">删除</button>
+                <button
+                  v-if="canAudit || work.team_leader_id === authStore.user?.id"
+                  @click="openEdit(work)"
+                  class="text-green-600 hover:text-green-700 font-medium transition-colors"
+                >
+                  编辑
+                </button>
+                <template v-if="canAudit || work.team_leader_id === authStore.user?.id">
+                  <span class="text-gray-300">|</span>
+                  <button @click="handleDelete(work)" class="text-red-600 hover:text-red-700 font-medium transition-colors">删除</button>
+                </template>
               </div>
             </td>
           </tr>

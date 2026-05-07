@@ -565,3 +565,61 @@ async def get_my_works(
         page_size=page_size,
         items=[WorkResponse.model_validate(w) for w in works]
     )
+
+
+@router.get("/admin/list", response_model=PageResponse)
+async def get_works_for_admin(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    status: Optional[WorkStatus] = None,
+    team_name: Optional[str] = None,
+    keyword: Optional[str] = None,
+    theme_id: Optional[int] = Query(None, description="主题ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """后台作品列表 - 管理员/审核员看全部，普通用户只能看自己队伍的作品"""
+    query = db.query(Work).join(Team).outerjoin(CompetitionTheme, Work.theme_id == CompetitionTheme.id)
+
+    # 权限校验：普通用户只能看自己队伍的作品
+    if current_user.role == UserRole.USER:
+        user_team_ids = db.query(TeamMember.team_id).filter(
+            TeamMember.user_id == current_user.id
+        ).all()
+        team_ids = [t[0] for t in user_team_ids]
+        if team_ids:
+            query = query.filter(Work.team_id.in_(team_ids))
+        else:
+            return PageResponse(total=0, page=page, page_size=page_size, items=[])
+    # 管理员/审核员可以看所有作品，不需要额外过滤
+
+    if status:
+        query = query.filter(Work.status == status)
+
+    if team_name:
+        query = query.filter(Team.name.contains(team_name))
+
+    if keyword:
+        query = query.filter(Work.name.contains(keyword))
+
+    if theme_id:
+        query = query.filter(Work.theme_id == theme_id)
+
+    total = query.count()
+    works = query.order_by(Work.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    items = []
+    for w in works:
+        item = WorkResponse.model_validate(w).model_dump()
+        item["team_name"] = w.team.name
+        item["team_leader_id"] = w.team.leader_id  # 添加队长ID用于前端权限判断
+        if w.theme_id and w.theme_obj:
+            item["theme_name"] = w.theme_obj.name
+        items.append(item)
+
+    return PageResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=items
+    )

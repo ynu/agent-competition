@@ -280,6 +280,7 @@ function getStatusText(status: string) {
                     通过
                   </button>
                   <button
+                    v-if="canAudit || team.leader_id === authStore.user?.id"
                     @click="handleDelete(team)"
                     class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                   >

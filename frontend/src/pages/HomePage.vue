@@ -67,9 +67,9 @@ const timeline = [
 const defaultGuideUrl = 'https://itc.ynu.edu.cn/info/1013/1799.htm'
 
 const guides = [
-  { title: '报名要求', image: guideSignup, externalUrl: defaultGuideUrl, hasBotton: false },
-  { title: '课程资料', image: guideMaterials, path: '/page/materials', hasBotton: false },
-  { title: '报名入口', image: guideEntry, externalUrl: defaultGuideUrl, hasBotton: true }
+  { title: '报名要求', image: guideSignup, externalUrl: '/materials/1', hasBotton: false },
+  { title: '课程资料', image: guideMaterials, path: '/materials', hasBotton: false },
+  { title: '报名入口', image: guideEntry, externalUrl: '/admin/teams', hasBotton: true }
 ]
 
 const workImages = [work01, work02, work03, work04]
