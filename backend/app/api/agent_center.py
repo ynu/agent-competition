@@ -4,7 +4,9 @@
 from collections import OrderedDict
 from typing import Optional
 import httpx
-from fastapi import APIRouter, Query
+import os
+from fastapi import APIRouter, Query, HTTPException
+from fastapi.responses import FileResponse
 from app.core.config import settings
 
 router = APIRouter(prefix="/agent-center", tags=["智能体中心"])
@@ -105,3 +107,39 @@ async def list_agents(
         response = await client.post(url, headers=headers, content=body, timeout=30.0)
         response.raise_for_status()
         return response.json()
+
+
+@router.get("/image/{image_path:path}")
+async def get_agent_image(image_path: str):
+    """获取智能体图片"""
+    if not settings.VOLCENGINE_AK or not settings.VOLCENGINE_SK:
+        raise HTTPException(status_code=500, detail="未配置火山引擎 API 密钥")
+
+    host = settings.VOLCENGINE_HOST
+    action = "GetImageUploadUrl"
+    version = "2023-08-01"
+    url = f"http://{host}?Action={action}&Version={version}&X-Account-Id={settings.VOLCENGINE_ACCOUNT_ID}"
+
+    body_dict = {
+        "FileName": image_path.split("/")[-1],
+        "Type": "AgentIcon"
+    }
+
+    import json
+    body = json.dumps(body_dict)
+
+    headers = sign_request("POST", host, action, version, body)
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        response = await client.post(url, headers=headers, content=body, timeout=30.0)
+        response.raise_for_status()
+        data = response.json()
+
+        # 获取预签名URL
+        upload_url = data.get("Result", {}).get("UploadUrl", "")
+        if not upload_url:
+            raise HTTPException(status_code=404, detail="图片不存在")
+
+        # 代理获取图片
+        img_response = await client.get(upload_url, timeout=30.0)
+        return img_response.content

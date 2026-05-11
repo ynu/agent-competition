@@ -139,7 +139,16 @@ export const logApi = {
 export const agentCenterApi = {
   listCategories: () => api.get('/agent-center/categories'),
   listAgents: (params?: { page?: number; page_size?: number; category?: string; keyword?: string; sort?: string }) =>
-    api.get('/agent-center', { params })
+    api.get('/agent-center', { params }),
+  getImageUrl: (imagePath: string) => {
+    const baseUrl = 'https://agent.ynu.edu.cn/api/proxy/down'
+    const params = new URLSearchParams({
+      Action: 'Download',
+      Path: imagePath,
+      IsAnonymous: 'true'
+    })
+    return `${baseUrl}?${params.toString()}`
+  }
 }
 
 // Materials APIs (课程资料)

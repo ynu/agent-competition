@@ -37,8 +37,6 @@ const sort = ref<'latest' | 'popular'>('latest')
 // Debounce
 let searchTimeout: number | null = null
 
-const headerClasses = ['work-header-cyan', 'work-header-green', 'work-header-blue', 'work-header-orange']
-
 const totalPages = computed(() => Math.ceil(filteredAgents.value.length / pageSize))
 
 onMounted(async () => {
@@ -138,10 +136,6 @@ function openAgent(appId: string) {
   window.open(`https://agent.ynu.edu.cn/product/llm/mall/application/${appId}/chat`, '_blank')
 }
 
-function getHeaderClass(index: number): string {
-  return headerClasses[index % headerClasses.length]
-}
-
 watch(keyword, handleKeywordInput)
 </script>
 
@@ -228,51 +222,68 @@ watch(keyword, handleKeywordInput)
       </div>
 
       <!-- Agent Grid -->
-      <div v-else class="mt-[30px] grid grid-cols-1 gap-x-[34px] gap-y-[36px] sm:grid-cols-2 lg:grid-cols-4">
+      <div v-else class="mt-[30px] grid grid-cols-1 gap-x-[24px] gap-y-[24px] sm:grid-cols-2 lg:grid-cols-4">
         <article
           v-for="(agent, index) in filteredAgents"
           :key="agent.AppID"
-          class="work-card cursor-pointer overflow-hidden rounded-[10px] bg-white shadow-[0_4px_18px_rgba(28,51,84,0.10)] transition-transform duration-200 hover:-translate-y-[4px]"
+          class="agent-card cursor-pointer rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
           @click="openAgent(agent.AppID)"
         >
-          <!-- Header with gradient background -->
-          <div class="relative h-[104px] overflow-hidden" :class="getHeaderClass(index)">
-            <div class="absolute left-[14px] top-[19px] text-[76px] text-white/35 font-[900] leading-none">Ai</div>
-            <div class="flex items-center ml-[60px] mr-[5px] h-full py-[5px] box-border w-[calc(100%-65px)]">
-              <h3 class="relative z-10 line-clamp-4 w-full text-[18px] text-[#005cae] font-[800] leading-[24px]">
+          <!-- Row 1: Logo + Title/Submitter -->
+          <div class="flex items-start gap-3 p-4">
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img
+                v-if="agent.Image"
+                :src="agentCenterApi.getImageUrl(agent.Image)"
+                class="w-full h-full object-cover"
+                @error="$event.target.style.display='none'"
+              />
+              <span v-else class="text-white text-xl font-bold">AI</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-base font-semibold text-gray-800 truncate leading-tight">
                 {{ agent.Name }}
               </h3>
+              <p class="text-xs text-gray-400 mt-0.5">
+                by {{ agent.SubmitUserName || '未知' }}
+              </p>
             </div>
           </div>
 
-          <!-- Content -->
-          <div class="px-[18px] pb-[22px] pt-[20px]">
-            <p class="text-[14px] text-[#626b78] leading-[18px] line-clamp-3 min-h-[54px]">
+          <!-- Row 2: Description -->
+          <div class="px-4 pb-3">
+            <p class="text-sm text-gray-500 truncate leading-normal h-5 overflow-hidden">
               {{ agent.Description || '暂无描述' }}
             </p>
+          </div>
 
-            <!-- Category Tags -->
-            <div class="mt-[12px] flex flex-wrap gap-[6px]">
+          <!-- Row 3: Category Tags -->
+          <div class="px-4 pb-3">
+            <div class="flex flex-wrap gap-1.5">
               <span
-                v-for="cat in (agent.CategoryList || []).slice(0, 2)"
+                v-for="cat in (agent.CategoryList || []).slice(0, 3)"
                 :key="cat.CategoryCode"
-                class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full font-medium"
               >
                 {{ cat.CategoryName }}
               </span>
             </div>
+          </div>
 
-            <!-- Stats -->
-            <div class="mt-[16px] flex items-center gap-[20px] text-[13px] text-gray-400">
-              <span class="inline-flex items-center gap-[4px]">
-                <i class="iconfont icon-toupiao text-[14px]"></i>
-                {{ agent.FavoriteCount || 0 }}
-              </span>
-              <span class="inline-flex items-center gap-[4px]">
-                <i class="iconfont icon-icon- text-[14px]"></i>
-                {{ agent.UseCount || 0 }}
-              </span>
-            </div>
+          <!-- Row 4: Stats -->
+          <div class="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100 text-left space-x-4">
+            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+              <span>⭐</span>
+              {{ agent.FavoriteCount || 0 }}
+            </span>
+            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+              <span>📖</span>
+              {{ agent.UseCount || 0 }}
+            </span>
+            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+              <span>💬</span>
+              {{ agent.ChatCount || 0 }}
+            </span>
           </div>
         </article>
       </div>
@@ -304,24 +315,10 @@ watch(keyword, handleKeywordInput)
   font-size: 14px;
 }
 
-.work-card {
-  min-height: 280px;
-}
-
-.work-header-cyan {
-  background: linear-gradient(105deg, #d8fbff 0%, #bff9ff 52%, #cff8ff 100%);
-}
-
-.work-header-green {
-  background: linear-gradient(105deg, #d9fff7 0%, #bffbee 52%, #cef9ef 100%);
-}
-
-.work-header-blue {
-  background: linear-gradient(105deg, #d9ebff 0%, #c8dcff 52%, #d8e6ff 100%);
-}
-
-.work-header-orange {
-  background: linear-gradient(105deg, #ffe9d4 0%, #ffd9b8 52%, #ffe4ca 100%);
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
 }
 
 .works-pagination :deep(.el-pager li),
