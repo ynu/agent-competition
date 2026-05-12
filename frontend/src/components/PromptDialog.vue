@@ -40,7 +40,7 @@ function handleConfirm() {
   <Dialog
     :show="show"
     :title="title"
-    size="sm"
+    width="sm"
     @close="emit('close')"
   >
     <div class="p-6 space-y-4">

@@ -236,7 +236,7 @@ watch(keyword, handleKeywordInput)
                 v-if="agent.Image"
                 :src="agentCenterApi.getImageUrl(agent.Image)"
                 class="w-full h-full object-cover"
-                @error="$event.target.style.display='none'"
+                @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
               />
               <span v-else class="text-white text-xl font-bold">AI</span>
             </div>

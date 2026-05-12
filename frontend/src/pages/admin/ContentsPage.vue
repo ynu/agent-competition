@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import Dialog from '@/components/Dialog.vue'
 import { useNotification } from '@/composables/useNotification'
 import markdownIt from 'markdown-it'
 
@@ -16,6 +17,9 @@ const typeFilter = ref('')
 const keyword = ref('')
 const publishedFilter = ref('')
 const dragIndex = ref(-1)
+
+// 多选状态
+const selectedContents = ref<Set<number>>(new Set())
 
 const showModal = ref(false)
 const previewMode = ref(false)
@@ -42,6 +46,83 @@ const formData = ref({
   author: '',
   cover_image: ''
 })
+
+const selectedCount = computed(() => selectedContents.value.size)
+const allSelected = computed(() => contents.value.length > 0 && selectedContents.value.size === contents.value.length)
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedContents.value.clear()
+  } else {
+    selectedContents.value = new Set(contents.value.map(c => c.id))
+  }
+  selectedContents.value = new Set(selectedContents.value)
+}
+
+function toggleSelect(contentId: number) {
+  if (selectedContents.value.has(contentId)) {
+    selectedContents.value.delete(contentId)
+  } else {
+    selectedContents.value.add(contentId)
+  }
+  selectedContents.value = new Set(selectedContents.value)
+}
+
+function clearSelection() {
+  selectedContents.value.clear()
+}
+
+// 批量删除
+async function handleBatchDelete() {
+  if (selectedContents.value.size === 0) return
+  confirmMessage.value = `确定删除选中的 ${selectedContents.value.size} 个内容吗？此操作不可恢复。`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    let successCount = 0
+    let failCount = 0
+    for (const contentId of selectedContents.value) {
+      try {
+        await api.delete(`/contents/${contentId}`)
+        successCount++
+      } catch (e: any) {
+        failCount++
+      }
+    }
+    clearSelection()
+    await fetchContents()
+    if (failCount === 0) {
+      success(`成功删除 ${successCount} 个内容`)
+    } else {
+      error(`删除完成`, `成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
+  }
+}
+
+// 批量发布/取消发布
+async function handleBatchPublish(published: boolean) {
+  if (selectedContents.value.size === 0) return
+  confirmMessage.value = `确定将选中的 ${selectedContents.value.size} 个内容${published ? '发布' : '取消发布'}吗？`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    let successCount = 0
+    let failCount = 0
+    for (const contentId of selectedContents.value) {
+      try {
+        await api.put(`/contents/${contentId}`, { is_published: published })
+        successCount++
+      } catch (e: any) {
+        failCount++
+      }
+    }
+    clearSelection()
+    await fetchContents()
+    if (failCount === 0) {
+      success(`成功更新 ${successCount} 个内容`)
+    } else {
+      error(`更新完成`, `成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
+  }
+}
 
 const typeOptions = [
   { value: '', label: '全部类型' },
@@ -72,7 +153,7 @@ async function fetchContents() {
     const res = await api.get('/contents', {
       params: {
         page: page.value,
-        page_size: pageSize,
+        page_width: pageSize,
         type: typeFilter.value || undefined,
         keyword: keyword.value || undefined,
         is_published: publishedFilter.value === '' ? undefined : publishedFilter.value === 'true'
@@ -256,15 +337,42 @@ function moveDown(content: any, index: number) {
           <h1 class="text-2xl font-bold text-gray-800">内容管理</h1>
           <p class="text-sm text-gray-500 mt-1">管理页面、栏目与文章</p>
         </div>
-        <button
-          @click="openCreate"
-          class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-          </svg>
-          创建内容
-        </button>
+        <div class="flex items-center gap-3">
+          <!-- 批量操作 -->
+          <div v-if="selectedCount > 0" class="flex items-center gap-2 mr-2">
+            <span class="text-sm text-gray-500">已选 {{ selectedCount }} 项</span>
+            <button
+              @click="handleBatchPublish(true)"
+              class="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              批量发布
+            </button>
+            <button
+              @click="handleBatchPublish(false)"
+              class="px-3 py-1.5 text-sm font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+            >
+              批量取消发布
+            </button>
+            <button
+              @click="handleBatchDelete"
+              class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              批量删除
+            </button>
+            <button @click="clearSelection" class="px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
+              取消选择
+            </button>
+          </div>
+          <button
+            @click="openCreate"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            创建内容
+          </button>
+        </div>
       </div>
     </div>
 
@@ -313,11 +421,18 @@ function moveDown(content: any, index: number) {
       <table class="w-full">
         <thead>
           <tr class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">排序</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10">
+              <input
+                type="checkbox"
+                :checked="allSelected"
+                :indeterminate="selectedCount > 0 && !allSelected"
+                @change="toggleSelectAll"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">排序</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">标题</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Slug</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">类型</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">状态</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
@@ -326,16 +441,27 @@ function moveDown(content: any, index: number) {
           <tr
             v-for="(content, index) in contents"
             :key="content.id"
-            class="hover:bg-blue-50/50 transition-colors"
+            :class="[
+              selectedContents.has(content.id) ? 'bg-blue-50/50' : 'hover:bg-blue-50/50',
+              dragIndex === index ? 'bg-blue-50 border-blue-300' : ''
+            ]"
+            class="transition-colors"
             data-draggable="true"
-            :class="{ 'bg-blue-50 border-blue-300': dragIndex === index }"
             draggable="true"
             @dragstart="onDragStart(index)"
             @dragover="onDragOver($event, index)"
             @drop="onDrop(index)"
             @dragend="onDragEnd"
           >
-            <td class="px-6 py-4">
+            <td class="px-4 py-4">
+              <input
+                type="checkbox"
+                :checked="selectedContents.has(content.id)"
+                @change="toggleSelect(content.id)"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </td>
+            <td class="px-4 py-4">
               <div class="flex items-center gap-1">
                 <button @click="moveUp(content, index)" :disabled="index === 0" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,16 +477,13 @@ function moveDown(content: any, index: number) {
               </div>
             </td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ content.id }}</td>
-            <td class="px-6 py-4 text-sm text-gray-800 font-medium">{{ content.title }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600 font-mono text-xs">{{ content.slug }}</td>
-            <td class="px-6 py-4 text-sm">
-              <span
-                class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"
-                :class="getTypeClass(content.type)"
-              >
-                {{ getTypeLabel(content.type) }}
-              </span>
+            <td class="px-6 py-4 text-sm text-gray-800 font-medium">
+              <button @click="openEdit(content)" class="text-left hover:text-blue-600 hover:underline">
+                {{ content.title }}
+              </button>
             </td>
+            <td class="px-6 py-4 text-sm hidden">{{ content.slug }}</td>
+            <td class="px-6 py-4 text-sm hidden">{{ content.type }}</td>
             <td class="px-6 py-4 text-sm">
               <span
                 class="inline-flex items-center gap-1.5"
@@ -423,20 +546,15 @@ function moveDown(content: any, index: number) {
     </div>
 
     <!-- Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
-          <div>
-            <h3 class="text-lg font-semibold text-white">{{ editingContent ? '编辑内容' : '创建内容' }}</h3>
-            <p class="text-blue-100 text-sm">{{ editingContent ? '修改内容信息' : '创建新的页面或栏目' }}</p>
-          </div>
-          <button @click="showModal = false" class="text-white hover:bg-white/20 rounded-lg p-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <form @submit.prevent="handleSave" class="p-6 space-y-5 overflow-y-auto flex-1">
+    <Dialog
+      :show="showModal"
+      :title="editingContent ? '编辑内容' : '创建内容'"
+      :subtitle="editingContent ? '修改内容信息' : '创建新的页面或栏目'"
+      width="5xl"
+      maxHeight="90vh"
+      @close="showModal = false"
+    >
+      <form @submit.prevent="handleSave" class="p-6 space-y-5 overflow-y-auto flex-1">
           <div class="grid md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">标题 <span class="text-red-500">*</span></label>
@@ -553,7 +671,7 @@ function moveDown(content: any, index: number) {
                 v-model="formData.content"
                 rows="15"
                 placeholder="支持 Markdown 格式..."
-                class="w-full px-4 py-3 border-0 focus:ring-0 resize-none font-mono text-sm"
+                class="w-full px-4 py-3 border-0 focus:ring-0 rewidth-none font-mono text-sm"
               ></textarea>
               <div
                 v-else
@@ -582,8 +700,7 @@ function moveDown(content: any, index: number) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Dialog>
 
     <!-- Confirm Dialog -->
     <ConfirmDialog
@@ -601,9 +718,9 @@ function moveDown(content: any, index: number) {
 </template>
 
 <style scoped>
-.prose :deep(h1) { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.75rem; }
-.prose :deep(h2) { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.625rem; }
-.prose :deep(h3) { font-size: 1.125rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+.prose :deep(h1) { font-width: 1.5rem; font-weight: 700; margin: 1rem 0 0.75rem; }
+.prose :deep(h2) { font-width: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.625rem; }
+.prose :deep(h3) { font-width: 1.125rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
 .prose :deep(p) { margin: 0.5rem 0; line-height: 1.7; }
 .prose :deep(ul), .prose :deep(ol) { padding-left: 1.5rem; margin: 0.5rem 0; }
 .prose :deep(li) { margin: 0.25rem 0; }

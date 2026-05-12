@@ -167,9 +167,6 @@ function getHeaderClass(index: number): string {
           @keydown.space.prevent="openWorkDetail(work)"
         >
           <div class="relative h-[104px] overflow-hidden" :class="getHeaderClass(index)">
-            <span class="absolute left-[-1px] top-[-1px] z-10 rounded-br-[8px] rounded-tl-[8px] bg-[#1189ff] px-[14px] py-[5px] text-[16px] text-white font-[800]">
-              {{ work.id }}
-            </span>
             <div class="absolute left-[14px] top-[19px] text-[76px] text-white/35 font-[900] leading-none">Ai</div>
             <div class="flex items-center ml-[60px] mr-[5px] h-full py-[5px] box-border w-[calc(100%-65px)]">
               <h2 class="relative z-10 line-clamp-4 w-full text-[18px] text-[#005cae] font-[800] leading-[24px]">
@@ -181,20 +178,12 @@ function getHeaderClass(index: number): string {
           <div class="px-[18px] pb-[22px] pt-[20px]">
             <dl class="space-y-[8px] text-[14px] text-[#626b78] leading-[18px]">
               <div class="flex w-full">
-                <dt class="tracking-[1px] w-[75px]">作品名称：</dt>
-                <dd class="w-[calc(100%-75px)] line-clamp-1">{{ work.name }}</dd>
-              </div>
-              <div class="flex w-full">
                 <dt class="tracking-[1px] w-[75px]">参赛队伍：</dt>
                 <dd class="w-[calc(100%-75px)] line-clamp-1">{{ work.team_name }}</dd>
               </div>
               <div class="flex w-full">
                 <dt class="tracking-[1px] w-[75px]">当前票数：</dt>
                 <dd class="w-[calc(100%-75px)] line-clamp-1">{{ work.vote_count || 0 }}</dd>
-              </div>
-              <div class="flex w-full">
-                <dt class="tracking-[3px] w-[75px]">浏览量：</dt>
-                <dd class="w-[calc(100%-75px)] line-clamp-1">{{ work.view_count || 0 }}</dd>
               </div>
             </dl>
 

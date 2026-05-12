@@ -62,7 +62,7 @@ onMounted(async () => {
 async function fetchSettings() {
   loading.value = true
   try {
-    const res = await api.get('/settings', { params: { page_size: 100 } })
+    const res = await api.get('/settings', { params: { page_width: 100 } })
     settings.value = res.data.items || []
     settings.value.forEach((s: any) => {
       formData.value[s.key] = s.value || ''
@@ -76,7 +76,7 @@ async function fetchSettings() {
 
 async function fetchThemes() {
   try {
-    const res = await api.get('/settings/competition-themes', { params: { page_size: 100 } })
+    const res = await api.get('/settings/competition-themes', { params: { page_width: 100 } })
     themes.value = res.data.items || []
   } catch (e: any) {
     console.error(e)
@@ -175,7 +175,7 @@ async function handleSortThemes(fromIndex: number, toIndex: number) {
 
 async function viewThemeWorks(theme: any) {
   try {
-    const res = await api.get('/works', { params: { theme_id: theme.id, page_size: 100 } })
+    const res = await api.get('/works', { params: { theme_id: theme.id, page_width: 100 } })
     detailWork.value = { ...theme, works: res.data.items || [] }
     showDetailDialog.value = true
   } catch (e: any) {
@@ -423,7 +423,7 @@ async function handleClearData() {
       :show="showDialog && dialogType === 'theme'"
       :title="editingTheme ? '编辑主题' : '添加主题'"
       :subtitle="editingTheme ? '修改主题信息' : '创建新大赛主题'"
-      size="md"
+      width="md"
       @close="showDialog = false"
     >
       <form @submit.prevent="handleSaveTheme" class="p-6 space-y-4">
@@ -475,7 +475,7 @@ async function handleClearData() {
       :show="showDetailDialog"
       :title="`主题作品 - ${detailWork?.name}`"
       :subtitle="`共 ${detailWork?.works?.length || 0} 个作品`"
-      size="lg"
+      width="lg"
       @close="showDetailDialog = false"
     >
       <div class="p-6">

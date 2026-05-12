@@ -51,7 +51,7 @@ async function fetchUsers() {
     const res = await api.get('/users', {
       params: {
         page: page.value,
-        page_size: pageSize,
+        page_width: pageSize,
         role: roleFilter.value || undefined,
         keyword: keyword.value || undefined
       }
@@ -310,7 +310,7 @@ function handleSearch() {
       :show="showDialog && (dialogType === 'create' || dialogType === 'edit')"
       :title="dialogType === 'create' ? '添加用户' : '编辑用户'"
       :subtitle="dialogType === 'create' ? '创建新用户账号' : '修改用户信息'"
-      size="md"
+      width="md"
       @close="showDialog = false"
     >
       <form @submit.prevent="handleSave" class="p-6 space-y-4">
@@ -383,7 +383,7 @@ function handleSearch() {
       :show="showDialog && dialogType === 'reset'"
       title="重置密码"
       :subtitle="`为用户 ${resettingUser?.username} 重置密码`"
-      size="sm"
+      width="sm"
       @close="showDialog = false"
     >
       <form @submit.prevent="handleResetPassword" class="p-6 space-y-4">

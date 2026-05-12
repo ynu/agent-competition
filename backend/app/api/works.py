@@ -288,10 +288,10 @@ async def create_work(
     description: Optional[str] = Form(None),
     theme_id: int = Form(..., description="主题方向ID"),
     team_id: Optional[int] = Form(None),
-    agent_url: str = Form(..., description="智能体URL"),
-    agent_editor_url: Optional[str] = Form(None),
-    pdf_file: Optional[UploadFile] = File(None),
-    video_file: Optional[UploadFile] = File(None),
+    agent_url: str = Form(..., description="发布后的智能体URL，如 https://agent.ynu.edu.cn/product/llm/chat/<publish_id>"),
+    agent_editor_url: str = Form(..., description="智能体编排URL，如 https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange"),
+    pdf_file: Optional[UploadFile] = File(..., description="PDF文档"),
+    video_file: Optional[UploadFile] = File(..., description="演示视频"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -348,6 +348,13 @@ async def create_work(
     # 管理员/评审提交时自动通过审核，普通用户需要审核
     is_admin_or_reviewer = current_user.role in [UserRole.ADMIN, UserRole.REVIEWER]
     work_status = WorkStatus.APPROVED if is_admin_or_reviewer else WorkStatus.PENDING
+
+    # 管理员可以不上传文件
+    if not is_admin_or_reviewer:
+        if not pdf_file:
+            raise HTTPException(status_code=400, detail="请上传PDF文档")
+        if not video_file:
+            raise HTTPException(status_code=400, detail="请上传演示视频")
 
     work = Work(
         team_id=team.id,

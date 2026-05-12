@@ -39,14 +39,168 @@ const formData = ref({
   status: 'pending'
 })
 
-// Confirm dialog state
-const showConfirm = ref(false)
-const confirmMessage = ref('')
-const confirmCallback = ref<(() => void) | null>(null)
+// 字段错误提示
+const fieldErrors = ref<Record<string, string>>({
+  name: '',
+  theme_id: '',
+  agent_url: '',
+  agent_editor_url: '',
+  pdf_file: '',
+  video_file: ''
+})
+
+// 多选状态
+const selectedWorks = ref<Set<number>>(new Set())
 
 const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const hasTeam = computed(() => !!userTeam.value)
 const canAddWork = computed(() => canAudit.value || hasTeam.value)
+const selectedCount = computed(() => selectedWorks.value.size)
+const allSelected = computed(() => works.value.length > 0 && selectedWorks.value.size === works.value.length)
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedWorks.value.clear()
+  } else {
+    selectedWorks.value = new Set(works.value.map(w => w.id))
+  }
+  selectedWorks.value = new Set(selectedWorks.value)
+}
+
+function toggleSelect(workId: number) {
+  if (selectedWorks.value.has(workId)) {
+    selectedWorks.value.delete(workId)
+  } else {
+    selectedWorks.value.add(workId)
+  }
+  selectedWorks.value = new Set(selectedWorks.value)
+}
+
+function clearSelection() {
+  selectedWorks.value.clear()
+}
+
+// 批量删除
+async function handleBatchDelete() {
+  if (selectedWorks.value.size === 0) return
+  confirmMessage.value = `确定删除选中的 ${selectedWorks.value.size} 个作品吗？此操作不可恢复。`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    let successCount = 0
+    let failCount = 0
+    for (const workId of selectedWorks.value) {
+      try {
+        await api.delete(`/works/${workId}`)
+        successCount++
+      } catch (e: any) {
+        failCount++
+      }
+    }
+    clearSelection()
+    await fetchWorks()
+    if (failCount === 0) {
+      success(`成功删除 ${successCount} 个作品`)
+    } else {
+      error(`删除完成`, `成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
+  }
+}
+
+// 批量审核
+async function handleBatchAudit(status: string) {
+  if (selectedWorks.value.size === 0) return
+  confirmMessage.value = `确定将选中的 ${selectedWorks.value.size} 个作品审核${status === 'approved' ? '通过' : '拒绝'}吗？`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    let successCount = 0
+    let failCount = 0
+    for (const workId of selectedWorks.value) {
+      try {
+        await api.put(`/works/${workId}`, { status })
+        successCount++
+      } catch (e: any) {
+        failCount++
+      }
+    }
+    clearSelection()
+    await fetchWorks()
+    if (failCount === 0) {
+      success(`成功审核 ${successCount} 个作品`)
+    } else {
+      error(`审核完成`, `成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
+  }
+}
+
+// 校验规则
+const urlPatterns = {
+  agent: /^https:\/\/agent\.ynu\.edu\.cn\/product\/llm\/chat\/.+$/,
+  editor: /^https:\/\/agent\.ynu\.edu\.cn\/product\/llm\/personal\/.+\/application\/.+\/arrange(?:\?.*)?$/
+}
+
+function validateField(field: string, value: any): string {
+  switch (field) {
+    case 'name':
+      if (!value || !String(value).trim()) return '请输入作品名称'
+      if (String(value).trim().length > 100) return '作品名称不能超过100个字符'
+      return ''
+    case 'theme_id':
+      if (!value) return '请选择主题方向'
+      return ''
+    case 'agent_url':
+      if (!value) return '请输入智能体URL'
+      if (!urlPatterns.agent.test(value)) return '智能体URL格式错误，应为 https://agent.ynu.edu.cn/product/llm/chat/<publish_id>'
+      return ''
+    case 'agent_editor_url':
+      if (!value) return '请输入编排URL'
+      if (!urlPatterns.editor.test(value)) return '编排URL格式错误，应为 https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange'
+      return ''
+    case 'pdf_file':
+      if (!value) return '请上传PDF文档'
+      return ''
+    case 'video_file':
+      if (!value) return '请上传演示视频'
+      return ''
+    default:
+      return ''
+  }
+}
+
+function validateAllFields(): boolean {
+  const errors: Record<string, string> = {}
+  let isValid = true
+
+  if (dialogType.value === 'create' || dialogType.value === 'edit') {
+    for (const key of ['name', 'theme_id', 'agent_url', 'agent_editor_url']) {
+      const err = validateField(key, formData.value[key as keyof typeof formData.value])
+      if (err) {
+        errors[key] = err
+        isValid = false
+      }
+    }
+    if (dialogType.value === 'create') {
+      if (!formData.value.pdf_file) errors['pdf_file'] = '请上传PDF文档'
+      if (!formData.value.video_file) errors['video_file'] = '请上传演示视频'
+      if (!formData.value.pdf_file || !formData.value.video_file) isValid = false
+    }
+  }
+
+  fieldErrors.value = errors
+  return isValid
+}
+
+function handleBlur(field: string) {
+  const value = formData.value[field as keyof typeof formData.value]
+  if (dialogType.value === 'create' || dialogType.value === 'edit') {
+    if (field === 'pdf_file' || field === 'video_file') return
+    fieldErrors.value[field] = validateField(field, value)
+  }
+}
+
+// Confirm dialog state
+const showConfirm = ref(false)
+const confirmMessage = ref('')
+const confirmCallback = ref<(() => void) | null>(null)
 
 onMounted(async () => {
   if (!canAudit.value) {
@@ -69,13 +223,20 @@ async function fetchUserTeam() {
   }
 }
 
+const availableThemes = computed(() => {
+  if (canAudit.value) return themes.value
+  // 获取当前队伍已使用的主题
+  const usedThemeIds = userTeam.value?.used_theme_ids || []
+  return themes.value.filter((t: any) => !usedThemeIds.includes(t.id))
+})
+
 async function fetchWorks() {
   loading.value = true
   try {
     const res = await api.get('/works/admin/list', {
       params: {
         page: page.value,
-        page_size: pageSize,
+        page_width: pageSize,
         status: statusFilter.value || undefined,
         keyword: keyword.value || undefined,
         team_name: teamFilter.value || undefined
@@ -92,16 +253,32 @@ async function fetchWorks() {
 
 async function fetchThemes() {
   try {
-    const res = await api.get('/settings/competition-themes', { params: { page_size: 100 } })
+    const res = await api.get('/settings/competition-themes', { params: { page_width: 100 } })
     themes.value = res.data.items?.filter((t: any) => t.is_active) || []
+    // 如果有用户队伍，获取已使用的主题
+    if (userTeam.value) {
+      await fetchTeamUsedThemes()
+    }
   } catch (e) {
     themes.value = []
   }
 }
 
+async function fetchTeamUsedThemes() {
+  try {
+    const res = await api.get('/works/my/works', { params: { page_width: 100 } })
+    const usedThemeIds = (res.data.items || []).map((w: any) => w.theme_id).filter(Boolean)
+    if (userTeam.value) {
+      userTeam.value.used_theme_ids = usedThemeIds
+    }
+  } catch (e) {
+    // 忽略错误
+  }
+}
+
 async function fetchTeams() {
   try {
-    const res = await api.get('/teams', { params: { status: 'approved', page_size: 100 } })
+    const res = await api.get('/teams', { params: { status: 'approved', page_width: 100 } })
     teams.value = res.data.items || []
   } catch (e) {
     teams.value = []
@@ -115,6 +292,11 @@ function openDetail(work: any) {
 }
 
 function openCreate() {
+  // 检查是否有已审核通过的队伍
+  if (!canAudit.value && userTeam.value && userTeam.value.status !== 'approved') {
+    error('创建失败', '您的队伍尚未通过审核，无法提交作品')
+    return
+  }
   editingWork.value = null
   formData.value = {
     name: '',
@@ -149,20 +331,10 @@ function openEdit(work: any) {
 }
 
 async function handleSave() {
-  // 验证必填字段
-  if (dialogType.value === 'create') {
-    if (!formData.value.name) {
-      error('创建失败', '请输入作品名称')
-      return
-    }
-    if (!formData.value.theme_id) {
-      error('创建失败', '请选择主题方向')
-      return
-    }
-    if (!formData.value.agent_url) {
-      error('创建失败', '请输入智能体URL')
-      return
-    }
+  // 校验所有字段
+  if (!validateAllFields()) {
+    error('创建失败', '请检查表单中的错误')
+    return
   }
 
   if (dialogType.value === 'create') {
@@ -173,7 +345,7 @@ async function handleSave() {
     form.append('theme_id', String(formData.value.theme_id))
     if (formData.value.team_id) form.append('team_id', String(formData.value.team_id))
     form.append('agent_url', formData.value.agent_url)
-    if (formData.value.agent_editor_url) form.append('agent_editor_url', formData.value.agent_editor_url)
+    form.append('agent_editor_url', formData.value.agent_editor_url)
     if (formData.value.pdf_file) form.append('pdf_file', formData.value.pdf_file)
     if (formData.value.video_file) form.append('video_file', formData.value.video_file)
 
@@ -202,7 +374,7 @@ async function handleSave() {
         theme_id: formData.value.theme_id,
         agent_url: formData.value.agent_url,
         agent_editor_url: formData.value.agent_editor_url,
-        status: canAudit ? formData.value.status : undefined
+        status: canAudit.value ? formData.value.status : undefined
       })
       showDialog.value = false
       success('更新成功')
@@ -281,11 +453,13 @@ function openVideoPlayer() {
 
 function handlePageChange(newPage: number) {
   page.value = newPage
+  clearSelection()
   fetchWorks()
 }
 
 function handleSearch() {
   page.value = 1
+  clearSelection()
   fetchWorks()
 }
 </script>
@@ -299,24 +473,51 @@ function handleSearch() {
           <h1 class="text-2xl font-bold text-gray-800">作品管理</h1>
           <p class="text-sm text-gray-500 mt-1">管理参赛作品与审核状态</p>
         </div>
-        <button
-          v-if="canAddWork"
-          @click="openCreate"
-          class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-          </svg>
-          添加作品
-        </button>
-        <div
-          v-else
-          class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-400 rounded-xl cursor-not-allowed font-medium"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-          </svg>
-          请先创建队伍
+        <div class="flex items-center gap-3">
+          <!-- 批量操作 -->
+          <div v-if="canAudit && selectedCount > 0" class="flex items-center gap-2 mr-2">
+            <span class="text-sm text-gray-500">已选 {{ selectedCount }} 项</span>
+            <button
+              @click="handleBatchAudit('approved')"
+              class="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              批量通过
+            </button>
+            <button
+              @click="handleBatchAudit('rejected')"
+              class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              批量拒绝
+            </button>
+            <button
+              @click="handleBatchDelete"
+              class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              批量删除
+            </button>
+            <button @click="clearSelection" class="px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
+              取消选择
+            </button>
+          </div>
+          <button
+            v-if="canAddWork"
+            @click="openCreate"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            添加作品
+          </button>
+          <div
+            v-else
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-400 rounded-xl cursor-not-allowed font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            请先创建队伍
+          </div>
         </div>
       </div>
     </div>
@@ -372,27 +573,45 @@ function handleSearch() {
       <table class="w-full">
         <thead>
           <tr class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">作品名</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队伍</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">投票</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">评分</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">状态</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10">
+              <input
+                type="checkbox"
+                :checked="allSelected"
+                :indeterminate="selectedCount > 0 && !allSelected"
+                @change="toggleSelectAll"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">作品名</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队伍</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">投票</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           <tr
             v-for="work in works"
             :key="work.id"
-            class="hover:bg-blue-50/50 transition-colors"
+            :class="selectedWorks.has(work.id) ? 'bg-blue-50/50' : 'hover:bg-blue-50/50'"
+            class="transition-colors"
           >
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ work.id }}</td>
-            <td class="px-6 py-4 text-sm text-gray-800 font-medium">{{ work.name }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ work.team_name || '-' }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ work.theme_name || '-' }}</td>
-            <td class="px-6 py-4 text-sm">
+            <td class="px-4 py-4">
+              <input
+                type="checkbox"
+                :checked="selectedWorks.has(work.id)"
+                @change="toggleSelect(work.id)"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </td>
+            <td class="px-4 py-4">
+              <button @click="openEdit(work)" class="text-sm text-gray-800 font-medium hover:text-blue-600 hover:underline text-left">
+                {{ work.name }}
+              </button>
+            </td>
+            <td class="px-4 py-4 text-sm text-gray-600">{{ work.team_name || '-' }}</td>
+            <td class="px-4 py-4 text-sm text-gray-600">{{ work.theme_name || '-' }}</td>
+            <td class="px-4 py-4 text-sm">
               <div class="flex items-center gap-1 text-gray-600">
                 <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
@@ -400,54 +619,9 @@ function handleSearch() {
                 {{ work.vote_count }}
               </div>
             </td>
-            <td class="px-6 py-4 text-sm">
-              <span v-if="work.score" class="text-gray-800 font-medium">{{ work.score.toFixed(1) }}</span>
-              <span v-else class="text-gray-400">-</span>
-            </td>
-            <td class="px-6 py-4 text-sm">
-              <span
-                class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"
-                :class="{
-                  'bg-amber-100 text-amber-700': work.status === 'pending',
-                  'bg-green-100 text-green-700': work.status === 'approved',
-                  'bg-red-100 text-red-700': work.status === 'rejected'
-                }"
-              >
-                <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="{
-                  'bg-amber-500': work.status === 'pending',
-                  'bg-green-500': work.status === 'approved',
-                  'bg-red-500': work.status === 'rejected'
-                }"></span>
-                {{ work.status === 'pending' ? '待审核' : work.status === 'approved' ? '已通过' : '已拒绝' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm">
+            <td class="px-4 py-4 text-sm">
               <div class="flex items-center gap-2">
                 <button @click="openDetail(work)" class="text-blue-600 hover:text-blue-700 font-medium transition-colors">详情</button>
-                <span class="text-gray-300">|</span>
-                <select
-                  v-if="canAudit"
-                  :value="work.status"
-                  @change="handleStatusChange(work, ($event.target as HTMLSelectElement).value)"
-                  class="text-xs border border-gray-200 rounded px-1 py-0.5 focus:ring-1 focus:ring-blue-500"
-                  :class="{
-                    'text-amber-600 bg-amber-50': work.status === 'pending',
-                    'text-green-600 bg-green-50': work.status === 'approved',
-                    'text-red-600 bg-red-50': work.status === 'rejected'
-                  }"
-                >
-                  <option value="pending">待审核</option>
-                  <option value="approved">已通过</option>
-                  <option value="rejected">已拒绝</option>
-                </select>
-                <span v-else class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                  :class="{
-                    'text-amber-600 bg-amber-50': work.status === 'pending',
-                    'text-green-600 bg-green-50': work.status === 'approved',
-                    'text-red-600 bg-red-50': work.status === 'rejected'
-                  }">
-                  {{ work.status === 'pending' ? '待审核' : work.status === 'approved' ? '已通过' : '已拒绝' }}
-                </span>
                 <span class="text-gray-300">|</span>
                 <button
                   v-if="canAudit || work.team_leader_id === authStore.user?.id"
@@ -510,7 +684,7 @@ function handleSearch() {
       :show="showDialog && dialogType === 'detail'"
       :title="editingWork?.name || '作品详情'"
       subtitle="作品详细信息"
-      size="xl"
+      width="3xl"
       @close="showDialog = false"
     >
       <div class="p-6 space-y-5">
@@ -625,7 +799,8 @@ function handleSearch() {
       :show="showDialog && (dialogType === 'create' || dialogType === 'edit')"
       :title="dialogType === 'create' ? '添加作品' : '编辑作品'"
       :subtitle="dialogType === 'create' ? '创建新作品' : '修改作品信息'"
-      size="xl"
+      width="3xl"
+      maxHeight="90vh"
       @close="showDialog = false"
     >
       <form @submit.prevent="handleSave" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -635,9 +810,12 @@ function handleSearch() {
             v-model="formData.name"
             type="text"
             required
+            :class="fieldErrors.name ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''"
             class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             placeholder="请输入作品名称"
+            @blur="handleBlur('name')"
           />
+          <p v-if="fieldErrors.name" class="mt-1 text-xs text-red-500">{{ fieldErrors.name }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">描述</label>
@@ -668,12 +846,12 @@ function handleSearch() {
             <label class="block text-sm font-medium text-gray-700 mb-1.5">主题方向 <span class="text-red-500">*</span></label>
             <select
               v-model="formData.theme_id"
-              :disabled="!canAudit && !userTeam"
+              :disabled="!canAudit && (!userTeam || availableThemes.length === 0)"
               required
               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option :value="null">请选择主题</option>
-              <option v-for="theme in themes" :key="theme.id" :value="theme.id">{{ theme.name }}</option>
+              <option :value="null">{{ availableThemes.length === 0 && !canAudit ? '所有主题已使用' : '请选择主题' }}</option>
+              <option v-for="theme in availableThemes" :key="theme.id" :value="theme.id">{{ theme.name }}</option>
             </select>
           </div>
           <div v-if="(canAudit || hasTeam) && dialogType === 'edit'">
@@ -689,29 +867,47 @@ function handleSearch() {
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">智能体URL <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            智能体URL <span class="text-red-500">*</span>
+            <span class="text-gray-400 font-normal text-xs ml-1" title="发布后的智能体访问URL，格式：https://agent.ynu.edu.cn/product/llm/chat/<publish_id>">ⓘ</span>
+          </label>
           <input
             v-model="formData.agent_url"
             type="url"
             required
+            :class="fieldErrors.agent_url ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''"
             class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            placeholder="https://..."
+            placeholder="https://agent.ynu.edu.cn/product/llm/chat/<publish_id>"
+            @blur="handleBlur('agent_url')"
           />
+          <p v-if="fieldErrors.agent_url" class="mt-1 text-xs text-red-500">{{ fieldErrors.agent_url }}</p>
+          <p v-else class="mt-1 text-xs text-gray-400">发布后的智能体访问URL，如 https://agent.ynu.edu.cn/product/llm/chat/d4oku4car5es72sj05d0</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">编排URL</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            编排URL <span class="text-red-500">*</span>
+            <span class="text-gray-400 font-normal text-xs ml-1" title="智能体编排页面的URL，格式：https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange">ⓘ</span>
+          </label>
           <input
             v-model="formData.agent_editor_url"
             type="url"
+            required
+            :class="fieldErrors.agent_editor_url ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''"
             class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            placeholder="https://..."
+            placeholder="https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange"
+            @blur="handleBlur('agent_editor_url')"
           />
+          <p v-if="fieldErrors.agent_editor_url" class="mt-1 text-xs text-red-500">{{ fieldErrors.agent_editor_url }}</p>
+          <p v-else class="mt-1 text-xs text-gray-400">智能体编排页面URL，如 https://agent.ynu.edu.cn/product/llm/personal/d356fl226fac72o35sfg/application/d4oknpsar5es72sj04gg/arrange</p>
         </div>
         <div v-if="dialogType === 'create' || dialogType === 'edit'">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">PDF文档 <span class="text-gray-400">(≤10MB)</span></label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            PDF文档 <span class="text-red-500">*</span>
+            <span class="text-gray-400 font-normal text-xs ml-1" title="作品设计文档，支持PDF格式，大小不超过10MB">ⓘ</span>
+          </label>
+          <div :class="fieldErrors.pdf_file ? 'border-red-400' : ''" class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
             <input
-              @change="(e: any) => formData.pdf_file = e.target.files[0]"
+              @change="(e: any) => { formData.pdf_file = e.target.files[0]; fieldErrors.pdf_file = '' }"
               type="file"
               accept=".pdf"
               class="hidden"
@@ -722,14 +918,19 @@ function handleSearch() {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
               </svg>
               <span class="text-sm text-gray-500">{{ formData.pdf_file?.name || '点击上传PDF文件' }}</span>
+              <p class="text-xs text-gray-400 mt-1">支持PDF格式，大小不超过10MB</p>
             </label>
           </div>
+          <p v-if="fieldErrors.pdf_file" class="mt-1 text-xs text-red-500">{{ fieldErrors.pdf_file }}</p>
         </div>
         <div v-if="dialogType === 'create' || dialogType === 'edit'">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">演示视频 <span class="text-gray-400">(≤50MB)</span></label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            演示视频 <span class="text-red-500">*</span>
+            <span class="text-gray-400 font-normal text-xs ml-1" title="作品演示视频，支持MP4格式，大小不超过50MB">ⓘ</span>
+          </label>
+          <div :class="fieldErrors.video_file ? 'border-red-400' : ''" class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
             <input
-              @change="(e: any) => formData.video_file = e.target.files[0]"
+              @change="(e: any) => { formData.video_file = e.target.files[0]; fieldErrors.video_file = '' }"
               type="file"
               accept="video/mp4"
               class="hidden"
@@ -740,8 +941,10 @@ function handleSearch() {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
               </svg>
               <span class="text-sm text-gray-500">{{ formData.video_file?.name || '点击上传MP4视频' }}</span>
+              <p class="text-xs text-gray-400 mt-1">支持MP4格式，大小不超过50MB</p>
             </label>
           </div>
+          <p v-if="fieldErrors.video_file" class="mt-1 text-xs text-red-500">{{ fieldErrors.video_file }}</p>
         </div>
         <div class="flex justify-end gap-3 pt-4">
           <button
@@ -785,7 +988,7 @@ function handleSearch() {
       :show="showPdfModal"
       title="PDF文档预览"
       :subtitle="editingWork?.name"
-      size="6xl"
+      width="6xl"
       @close="showPdfModal = false"
     >
       <div class="h-[70vh]">
@@ -798,7 +1001,7 @@ function handleSearch() {
       :show="showVideoModal"
       title="演示视频播放"
       :subtitle="editingWork?.name"
-      size="lg"
+      width="lg"
       @close="showVideoModal = false"
     >
       <div class="p-4 bg-black">

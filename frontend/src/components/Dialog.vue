@@ -5,7 +5,8 @@ const props = defineProps<{
   show: boolean
   title: string
   subtitle?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full'
+  width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full' | '90vw'
+  maxHeight?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '70vh' | '80vh' | '90vh' | '95vh'
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +15,7 @@ const emit = defineEmits<{
 
 const isMaximized = ref(false)
 
-const sizeClasses: Record<string, string> = {
+const widthClasses: Record<string, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
@@ -24,7 +25,22 @@ const sizeClasses: Record<string, string> = {
   '4xl': 'max-w-4xl',
   '5xl': 'max-w-5xl',
   '6xl': 'max-w-6xl',
-  full: 'max-w-full'
+  'full': 'max-w-full',
+  '90vw': 'max-w-[90vw]'
+}
+
+const maxHeightClasses: Record<string, string> = {
+  sm: 'max-h-[40vh]',
+  md: 'max-h-[50vh]',
+  lg: 'max-h-[60vh]',
+  xl: 'max-h-[70vh]',
+  '2xl': 'max-h-[75vh]',
+  '3xl': 'max-h-[80vh]',
+  '4xl': 'max-h-[85vh]',
+  '70vh': 'max-h-[70vh]',
+  '80vh': 'max-h-[80vh]',
+  '90vh': 'max-h-[90vh]',
+  '95vh': 'max-h-[95vh]'
 }
 
 function toggleMaximize() {
@@ -51,7 +67,7 @@ watch(() => props.show, (val) => {
         <!-- Dialog container -->
         <div
           class="relative bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col z-10 transition-all duration-300"
-          :class="[sizeClasses[size || 'md'], isMaximized ? '!max-w-[95vw] !max-h-[95vh] !h-[95vh]' : '']"
+          :class="[widthClasses[width || 'md'], isMaximized ? '!max-w-[95vw] !max-h-[95vh] !h-[95vh]' : maxHeightClasses[maxHeight || '2xl']]"
         >
           <!-- Header -->
           <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center flex-shrink-0">

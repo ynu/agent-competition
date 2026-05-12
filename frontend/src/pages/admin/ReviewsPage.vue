@@ -37,7 +37,7 @@ onMounted(() => {
 async function fetchReviews() {
   loading.value = true
   try {
-    const params: any = { page: page.value, page_size: pageSize }
+    const params: any = { page: page.value, page_width: pageSize }
     if (teamName.value) params.team_name = teamName.value
     if (workName.value) params.work_name = workName.value
 
@@ -348,7 +348,7 @@ function calculateAverage(reviews: any[]): number {
       :show="showDialog && dialogType === 'review'"
       :title="`评审 - ${selectedWork?.name}`"
       subtitle="专家评分与评价"
-      size="md"
+      width="md"
       @close="showDialog = false"
     >
       <div class="p-6 space-y-5">
@@ -432,7 +432,7 @@ function calculateAverage(reviews: any[]): number {
       :show="showPdfModal"
       title="PDF文档预览"
       :subtitle="selectedWork?.name"
-      size="6xl"
+      width="6xl"
       @close="showPdfModal = false"
     >
       <div class="h-[70vh]">
@@ -445,7 +445,7 @@ function calculateAverage(reviews: any[]): number {
       :show="showVideoModal"
       title="演示视频播放"
       :subtitle="selectedWork?.name"
-      size="lg"
+      width="lg"
       @close="showVideoModal = false"
     >
       <div class="p-4 bg-black">
