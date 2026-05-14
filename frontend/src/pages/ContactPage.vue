@@ -2,35 +2,27 @@
 import { ref, computed } from 'vue'
 import markdownIt from 'markdown-it'
 
-const content = ref(`# 联系我们
-
-云南大学首届"火山杯"AI应用创新大赛组委会
+const content = ref(`
+## 组织机构
+- **主办单位**：云南大学信息技术中心、共青团云南大学委员会、学生处、教务处、研究生处
+- **协办单位**：北京火山引擎科技有限公司、云南尚雅科技文化有限公司
 
 ## 联系方式
+- **联系人**：信息技术中心规划建设部
+- **邮箱**：agent-competition@itc.ynu.edu.cn
+- **联系电话**：0871-65939411（工作日 9:00-17:00）
 
-### 联系方式
-- **联系人**：大赛组委会
-- **邮箱**：ai-competition@ynu.edu.cn
-- **电话**：0871-6503xxxx（工作日 9:00-17:00）
-
-### 地址
-云南省昆明市呈贡区大学城东陆路云南大学信息学院
-
-## 组织机构
-
-主办单位：云南大学、火山引擎
-
-承办单位：云南大学信息学院、云南大学教务处
-
-## 咨询时间
-
-工作日 9:00 - 17:00
+## 地址
+云南省昆明市呈贡区大学城东外环南路 云南大学呈贡校区敬宾楼1416 
 
 ## 相关链接
-
 - [云南大学官网](https://www.ynu.edu.cn/)
-- [火山引擎](https://www.volcengine.com/)
+- [云南大学信息技术中心](https://www.itc.ynu.edu.cn/)
 - [HiAgent平台](https://agent.volcengine.com/)
+
+## 大赛答疑交流
+ - ![QQ群](/src/assets/images/agent-competition-qq.png)
+
 `)
 
 const md = markdownIt({
@@ -61,7 +53,7 @@ const renderedContent = computed(() => {
           <div class="absolute inset-0 bg-gradient-to-r from-[#0066cc]/80 to-[#004385]/80"></div>
           <div class="absolute inset-0 flex flex-col justify-center px-[39px]">
             <h1 class="text-[28px] font-[800] leading-[34px] text-white">联系我们</h1>
-            <p class="mt-[10px] text-[16px] text-white/80">云南大学首届"火山杯"AI应用创新大赛</p>
+            <p class="mt-[10px] text-[16px] text-white/80">2026云南大学首届人工智能创新应用大赛组委会</p>
           </div>
         </div>
 
