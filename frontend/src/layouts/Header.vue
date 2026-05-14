@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import logoTop from '@/assets/images/logo_top.png'
+import logoTop from '@/assets/images/logo.png'
 
 const router = useRouter()
 const route = useRoute()
