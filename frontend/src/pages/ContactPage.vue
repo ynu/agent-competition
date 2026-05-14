@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import markdownIt from 'markdown-it'
+import { mediaPlugin } from '@/plugins/markdown'
 
 const content = ref(`
 ## 组织机构
@@ -29,7 +30,7 @@ const md = markdownIt({
   html: true,
   linkify: true,
   typographer: true
-})
+}).use(mediaPlugin)
 
 const renderedContent = computed(() => {
   return md.render(content.value)

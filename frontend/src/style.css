@@ -83,3 +83,80 @@ body {
 .dark .shadow-lg {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
+
+
+/* Markdown 媒体样式 */
+@layer components {
+  .md-media {
+    margin: 1rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .md-media-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .md-media-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .md-pdf-title,
+  .md-audio-title,
+  .md-video-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .md-image {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 1rem auto;
+    display: block;
+  }
+
+  .md-pdf-frame {
+    width: 100%;
+    height: 600px;
+    border: none;
+    display: block;
+    background: #f0f0f0;
+  }
+
+  .md-audio-player,
+  .md-video-player {
+    width: 100%;
+    display: block;
+    background: #1a1a1a;
+  }
+
+  .md-audio-player {
+    height: 48px;
+  }
+
+  .md-video-player {
+    max-height: 600px;
+  }
+
+  /* 暗色主题适配 */
+  @media (prefers-color-scheme: dark) {
+    .md-media {
+      background: #2d2d2d;
+    }
+    .md-pdf-frame {
+      background: #1a1a1a;
+    }
+  }
+}

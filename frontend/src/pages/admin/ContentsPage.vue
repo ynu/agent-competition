@@ -5,6 +5,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import Dialog from '@/components/Dialog.vue'
 import { useNotification } from '@/composables/useNotification'
 import markdownIt from 'markdown-it'
+import { mediaPlugin } from '@/plugins/markdown'
 
 const { success, error } = useNotification()
 
@@ -24,7 +25,7 @@ const selectedContents = ref<Set<number>>(new Set())
 const showModal = ref(false)
 const previewMode = ref(false)
 
-const md = markdownIt()
+const md = markdownIt().use(mediaPlugin)
 const renderMarkdown = (content: string) => {
   if (!content) return ''
   return md.render(content)

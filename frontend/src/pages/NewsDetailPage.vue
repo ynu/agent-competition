@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentApi } from '@/api'
 import markdownIt from 'markdown-it'
+import { mediaPlugin } from '@/plugins/markdown'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,7 +15,7 @@ const md = markdownIt({
   html: true,
   linkify: true,
   typographer: true
-})
+}).use(mediaPlugin)
 
 const renderedContent = computed(() => {
   if (!article.value?.content) return ''
