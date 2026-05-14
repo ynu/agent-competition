@@ -15,7 +15,7 @@ const extensions = {
 }
 
 // URL 正则表达式
-const urlPattern = /^https?:\/\/[^\s<>\"']+/i
+const urlRegex = /https?:\/\/[^\s<>\"')\]]+/gi
 
 // 前缀符号映射
 const prefixMap: Record<number, string> = {
@@ -64,11 +64,25 @@ function mediaPlugin(md: any) {
     return null
   }
 
+  // 从 URL 获取文件名作为标题
+  function getUrlFileName(url: string): string {
+    try {
+      const pathname = new URL(url).pathname
+      const filename = pathname.split('/').pop() || ''
+      return filename.replace(/\.[^.]+$/, '') || url
+    } catch {
+      return url
+    }
+  }
+
   // 保存默认渲染器
   const defaultLinkOpen = md.renderer.rules.link_open || function(tokens: any, idx: number, options: any, env: any, self: any) {
     return self.renderToken(tokens, idx, options)
   }
   const defaultImage = md.renderer.rules.image || function(tokens: any, idx: number, options: any, env: any, self: any) {
+    return self.renderToken(tokens, idx, options)
+  }
+  const defaultText = md.renderer.rules.text || function(tokens: any, idx: number, options: any, env: any, self: any) {
     return self.renderToken(tokens, idx, options)
   }
 
@@ -109,6 +123,40 @@ function mediaPlugin(md: any) {
       }
     }
     return defaultImage(tokens, idx, options, env, self)
+  }
+
+  // 处理文本中的纯 URL
+  md.renderer.rules.text = function(tokens: any, idx: number, options: any, env: any, self: any) {
+    const content = tokens[idx].content
+    if (!content) return defaultText(tokens, idx, options, env, self)
+
+    // 查找所有 URL
+    const urls = content.match(urlRegex)
+    if (!urls) return defaultText(tokens, idx, options, env, self)
+
+    // 检查是否有媒体类型的 URL
+    let hasMediaUrl = false
+    for (const url of urls) {
+      if (detectMediaType(url)) {
+        hasMediaUrl = true
+        break
+      }
+    }
+
+    if (!hasMediaUrl) return defaultText(tokens, idx, options, env, self)
+
+    // 替换 URL 为媒体 HTML
+    let result = content
+    for (const url of urls) {
+      const mediaType = detectMediaType(url)
+      if (mediaType && renderers[mediaType as keyof typeof renderers]) {
+        const title = "" // 纯 URL 没有标题，或者可以使用 getUrlFileName(url) 获取文件名作为标题
+        const mediaHtml = renderers[mediaType as keyof typeof renderers](url, title)
+        result = result.replace(url, mediaHtml)
+      }
+    }
+
+    return result
   }
 
   // 使用 inline ruler 自定义规则处理前缀语法
@@ -174,46 +222,6 @@ function mediaPlugin(md: any) {
     // 移动光标
     state.pos = parenEnd + 1
     return true
-  })
-
-  // 从 URL 获取文件名作为标题
-  function getUrlFileName(url: string): string {
-    try {
-      const pathname = new URL(url).pathname
-      const filename = pathname.split('/').pop() || ''
-      return filename.replace(/\.[^.]+$/, '') || url
-    } catch {
-      return url
-    }
-  }
-
-  // 自动识别纯 URL
-  md.inline.ruler.push('auto_url', (state: any, silent: boolean) => {
-    const pos = state.pos
-    const max = state.posMax
-    const src = state.src
-
-    // 检查是否是 URL 开头
-    const remaining = src.slice(pos)
-    const match = remaining.match(urlPattern)
-    if (!match) return false
-
-    const url = match[0]
-    const mediaType = detectMediaType(url)
-
-    // 如果是媒体文件类型，自动渲染
-    if (mediaType && renderers[mediaType as keyof typeof renderers]) {
-      if (!silent) {
-        const title = getUrlFileName(url)
-        const html = renderers[mediaType as keyof typeof renderers](url, title)
-        const token = state.push('html_inline', '', 0)
-        token.content = html
-      }
-      state.pos = pos + url.length
-      return true
-    }
-
-    return false
   })
 }
 
