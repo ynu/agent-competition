@@ -37,7 +37,9 @@ function mediaPlugin(md: any) {
     pdf: (href: string, title: string) => `
       <div class="md-media md-pdf">
         ${title ? `<div class="md-media-header">${iconPdf}<span class="md-media-title">${title}</span></div>` : ''}
-        <iframe src="/pdfjs/web/viewer.html?file=${encodeURIComponent(href)}" class="md-pdf-frame" loading="lazy"></iframe>
+        <object data="${href}" type="application/pdf" width="100%" height="500px">
+          <iframe src="/pdfjs/web/viewer.html?file=${encodeURIComponent(href)}" width="100%" height="500px"></iframe>
+        </object>
       </div>`,
     audio: (href: string, title: string) => `
       <div class="md-media md-audio">

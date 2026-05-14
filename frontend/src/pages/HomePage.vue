@@ -2,7 +2,9 @@
 import { ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { contentApi, workApi } from '@/api'
-import bannerHome from '@/assets/images/banner_home.png'
+import banner1 from '@/assets/images/banner_1.png'
+import banner2 from '@/assets/images/banner_2.png'
+import banner3 from '@/assets/images/banner_3.png'
 import overviewImage from '@/assets/images/img_home_overview.png'
 import guideSignup from '@/assets/images/img_home_01.png'
 import guideMaterials from '@/assets/images/img_home_02.png'
@@ -52,9 +54,9 @@ SectionTitle.props = {
 }
 
 const banners = [
-  { image: bannerHome, alt: '2026年云南大学首届人工智能创新应用大赛' },
-  { image: bannerHome, alt: '数启云大 智创未来' },
-  { image: bannerHome, alt: '基于大模型的校园生活智能体创新应用' }
+  { image: banner1, alt: '2026年云南大学首届人工智能创新应用大赛' },
+  { image: banner2, alt: '数启云大 智创未来' },
+  { image: banner3, alt: '基于大模型的校园生活智能体创新应用' }
 ]
 
 const timeline = [
@@ -242,9 +244,11 @@ onMounted(async () => {
           </el-card>
           <el-card v-if="works.length === 0" class="home-work-card !rounded-[10px] border-0">
             <template #default>
+              <!--
               <div class="text-center py-8 text-gray-400">
                 <p>暂无参赛作品</p>
               </div>
+              -->
             </template>
           </el-card>
         </div>
