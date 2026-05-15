@@ -54,16 +54,17 @@ SectionTitle.props = {
 }
 
 const banners = [
-  { image: banner1, alt: '2026年云南大学首届人工智能创新应用大赛' },
-  { image: banner2, alt: '数启云大 智创未来' },
-  { image: banner3, alt: '基于大模型的校园生活智能体创新应用' }
+  { image: banner1, alt: '2026年云南大学首届人工智能创新应用大赛', url: '/competition.html' },
+  { image: banner2, alt: '数启云大 智创未来', url: '/competition.html' },
+  { image: banner3, alt: '基于大模型的校园生活智能体创新应用', url: '/competition.html' }
 ]
 
 const timeline = [
-  { title: '大赛报名', date: '5月11日 - 6月19日', icon: timeline01, active: true },
-  { title: 'HiAgent 平台实操培训', date: '5月23日 - 5月24日', icon: timeline02 },
-  { title: '截止提交作品', date: '6月19日', icon: timeline03, active: true },
-  { title: '作品评审', date: '6月下旬', icon: timeline04 }
+  { title: '大赛报名', date: '2026 年 5 月 15 日 - 6 月 5 日 17:00', icon: timeline01, active: true },
+  { title: '培训赋能', date: '2026年5 月 28 日、29 日、6 月 4 日、5 日晚上举行', icon: timeline02 },
+  { title: '提交作品', date: '2026 年 6 月 22 日 17:00 截止', icon: timeline03, active: true },
+  { title: '作品评审', date: '2026 年6 月 23 日 - 30 日', icon: timeline04 },
+  { title: '获奖公示', date: '2026 年 7 月上旬', icon: timeline04 }
 ]
 
 const defaultGuideUrl = 'https://itc.ynu.edu.cn/info/1013/1799.htm'
@@ -132,7 +133,9 @@ onMounted(async () => {
     <div class="home-banner h-[500px] overflow-hidden bg-[#07148f]">
       <el-carousel height="500px" :interval="2500" trigger="click" arrow="never" indicator-position="inside">
         <el-carousel-item v-for="(banner, index) in banners" :key="index">
-          <img :src="banner.image" :alt="banner.alt" class="h-full w-full object-cover" />
+          <a :href="banner.url" target="_blank" rel="noopener noreferrer">
+            <img :src="banner.image" :alt="banner.alt" class="h-full w-full object-cover" />
+          </a>
         </el-carousel-item>
       </el-carousel>
     </div>
@@ -141,26 +144,28 @@ onMounted(async () => {
     <div class="bg-[url('@/assets/images/bg_home_01.png')] bg-no-repeat bg-cover bg-top pb-[58px] pt-[54px]">
       <div class="mx-auto max-w-[1200px]">
         <!-- 大赛介绍 -->
-        <div class="grid items-center gap-[48px] lg:grid-cols-[520px_1fr]">
-          <img :src="overviewImage" alt="基于大模型的校园生活智能体创新应用" class="w-full rounded-[2px]" />
-          <div>
-            <component :is="() => SectionTitle({ title: '大赛介绍', center: false })" />
-            <p class="mt-[24px] text-[15px] text-[#5d6472] leading-[30px]">
-              为响应国家"人工智能+"行动建设战略部署，在国家教育数字化、AI融合发展等政策指引下，AI人工智能正迈入场景化落地关键期。
-              智能体作为融合大模型能力、链接技术与需求的核心载体，在教育、校园服务等领域的应用潜力加速释放。
-            </p>
-            <p class="mt-[14px] text-[15px] text-[#5d6472] leading-[30px]">
-              在此背景下，为进一步落实学校"提升师生数字素养与技能实施方案"，云南大学联合火山引擎举办首届"火山杯"AI应用创新大赛。
-              赛事鼓励学生运用AI能力，在多元场景中探索技术创新应用，为数智化校园建设提供助力。
-            </p>
+        <a href="/competition.html" target="_blank" rel="noopener noreferrer">
+          <div class="grid items-center gap-[48px] lg:grid-cols-[520px_1fr]">
+            <img :src="overviewImage" alt="基于大模型的校园生活智能体创新应用" class="w-full rounded-[2px]" />
+            <div>
+              <component :is="() => SectionTitle({ title: '大赛介绍', center: false })" />
+              <p class="mt-[24px] text-[15px] text-[#5d6472] leading-[30px]">
+                为响应国家"人工智能+"行动建设战略部署，在国家教育数字化、AI融合发展等政策指引下，AI人工智能正迈入场景化落地关键期。
+                智能体作为融合大模型能力、链接技术与需求的核心载体，在教育、校园服务等领域的应用潜力加速释放。
+              </p>
+              <p class="mt-[14px] text-[15px] text-[#5d6472] leading-[30px]">
+                在此背景下，为进一步落实学校"提升师生数字素养与技能实施方案"，云南大学联合火山引擎举办首届"火山杯"AI应用创新大赛。
+                赛事鼓励学生运用AI能力，在多元场景中探索技术创新应用，为数智化校园建设提供助力。
+              </p>
+            </div>
           </div>
-        </div>
+        </a>
 
         <!-- 赛程安排 -->
         <div class="pt-[62px]">
           <component :is="() => SectionTitle({ title: '赛程安排', center: true })" />
           <div class="mt-[30px] rounded-[12px] bg-white/92 px-[66px] py-[50px] shadow-[0_18px_45px_rgba(42,126,255,0.10)]">
-            <div class="relative grid gap-[26px] md:grid-cols-4">
+            <div class="relative grid gap-[26px] md:grid-cols-5">
               <div class="absolute left-[11%] right-[11%] top-[150px] hidden border-t border-dashed border-[#1b8cff] md:block" />
               <div v-for="(item, index) in timeline" :key="item.title" class="relative text-center">
                 <img :src="item.icon" :alt="item.title" class="h-[155px] w-full rounded-t-[12px] object-contain" />
