@@ -217,11 +217,36 @@ async def create_content(
     current_user: User = Depends(get_current_active_user)
 ):
     """创建内容"""
+    # 如果没有提供 slug，自动生成
+    slug = content_data.slug
+    if not slug:
+        if content_data.type == ContentType.ARTICLE:
+            # 文章自动生成 slug
+            slug = f"article-{content_data.title}"
+        elif content_data.type == ContentType.PAGE:
+            # 课程资料自动生成 slug
+            slug = f"page-{content_data.title}"
+        else:
+            # 栏目必须有 slug
+            raise HTTPException(status_code=400, detail="栏目必须提供 slug")
+
     # 检查 slug 是否已存在
-    if db.query(Content).filter(Content.slug == content_data.slug).first():
+    if db.query(Content).filter(Content.slug == slug).first():
         raise HTTPException(status_code=400, detail="slug 已存在")
 
-    content = Content(**content_data.model_dump())
+    content = Content(
+        title=content_data.title,
+        slug=slug,
+        type=content_data.type,
+        content=content_data.content,
+        content_format=content_data.content_format,
+        parent_id=content_data.parent_id,
+        order=content_data.order,
+        is_published=content_data.is_published,
+        summary=content_data.summary,
+        author=content_data.author,
+        cover_image=content_data.cover_image
+    )
     db.add(content)
     db.commit()
     db.refresh(content)

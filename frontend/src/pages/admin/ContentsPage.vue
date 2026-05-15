@@ -131,9 +131,9 @@ async function handleBatchPublish(published: boolean) {
 
 const typeOptions = [
   { value: '', label: '全部类型' },
-  { value: 'page', label: '页面' },
+  { value: 'page', label: '课程资料' },
   { value: 'category', label: '栏目' },
-  { value: 'article', label: '文章' }
+  { value: 'article', label: '新闻资讯' }
 ]
 
 const publishedOptions = [
@@ -143,9 +143,9 @@ const publishedOptions = [
 ]
 
 const formTypeOptions = [
-  { value: 'page', label: '页面' },
+  { value: 'page', label: '课程资料' },
   { value: 'category', label: '栏目' },
-  { value: 'article', label: '文章' }
+  { value: 'article', label: '新闻资讯' }
 ]
 
 onMounted(() => {
@@ -254,7 +254,7 @@ function handlePageChange(newPage: number) {
 }
 
 function getTypeLabel(type: string) {
-  const map: Record<string, string> = { page: '页面', category: '栏目', article: '文章' }
+  const map: Record<string, string> = { page: '课程资料', category: '栏目', article: '新闻资讯' }
   return map[type] || type
 }
 
@@ -595,14 +595,20 @@ function handleFileSelected(result: { path: string; url: string }) {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Slug <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Slug
+                <span v-if="formData.type === 'category'" class="text-red-500">*</span>
+              </label>
               <input
                 v-model="formData.slug"
                 type="text"
-                required
-                placeholder="url-slug"
+                :required="formData.type === 'category'"
+                :placeholder="formData.type === 'category' ? 'url-slug (栏目必须)' : '留空自动生成'"
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm"
               />
+              <p v-if="formData.type !== 'category'" class="text-xs text-gray-500 mt-1">
+                课程资料和新闻资讯会自动生成 slug，栏目必须手动填写
+              </p>
             </div>
           </div>
 

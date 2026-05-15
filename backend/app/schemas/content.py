@@ -10,7 +10,7 @@ from app.models.content import ContentType, ContentContentType
 # 内容基础 schema
 class ContentBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
-    slug: str = Field(..., min_length=1, max_length=100)
+    slug: Optional[str] = Field(None, min_length=1, max_length=100)
     type: ContentType = ContentType.PAGE
     content: Optional[str] = None
     content_format: ContentContentType = ContentContentType.MARKDOWN

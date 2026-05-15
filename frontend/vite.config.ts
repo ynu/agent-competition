@@ -29,7 +29,7 @@ export default defineConfig({
       '/media': {
         target: 'http://localhost:8000',
         changeOrigin: true
-      }
+      },
     },
     watch: {
       ignored: ['**/node_modules/**', '**/dist/**'],

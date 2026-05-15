@@ -27,7 +27,7 @@ class Content(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False, comment="标题")
-    slug = Column(String(100), unique=True, index=True, nullable=False, comment="slug标识")
+    slug = Column(String(100), unique=True, index=True, nullable=True, comment="slug标识")
     type = Column(SQLEnum(ContentType), default=ContentType.PAGE, comment="类型")
     content = Column(Text, nullable=True, comment="内容")
     content_format = Column(SQLEnum(ContentContentType), default=ContentContentType.MARKDOWN, comment="内容格式")
