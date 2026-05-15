@@ -349,6 +349,7 @@ function handleFileSelected(result: { path: string; url: string }) {
     else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) prefix = '#'
     else if (['mp4', 'webm', 'mov', 'avi'].includes(ext)) prefix = '$'
     else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) prefix = '!'
+    else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) prefix = '&'
 
     formData.value.content += `\n${prefix}[${result.path}](${result.url})\n`
   }
