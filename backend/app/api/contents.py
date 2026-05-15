@@ -118,7 +118,7 @@ async def get_articles(
         )
 
     total = query.count()
-    articles = query.order_by(Content.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    articles = query.order_by(Content.order, Content.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
     return PageResponse(
         total=total,
@@ -138,7 +138,7 @@ async def get_latest_articles(
     articles = db.query(Content).filter(
         Content.type == ContentType.ARTICLE,
         Content.is_published == True
-    ).order_by(Content.created_at.desc()).limit(limit).all()
+    ).order_by(Content.order, Content.created_at.desc()).limit(limit).all()
 
     return [ContentResponse.model_validate(a) for a in articles]
 
