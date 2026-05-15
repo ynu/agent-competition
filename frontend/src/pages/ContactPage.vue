@@ -9,7 +9,7 @@ const content = ref(`
 - **协办单位**：北京火山引擎科技有限公司、云南尚雅科技文化有限公司
 
 ## 联系方式
-- **联系人**：信息技术中心规划建设部
+- **联系人**：李老师
 - **邮箱**：agent-competition@itc.ynu.edu.cn
 - **联系电话**：0871-65939411（工作日 9:00-17:00）
 
@@ -54,7 +54,7 @@ const renderedContent = computed(() => {
           <div class="absolute inset-0 bg-gradient-to-r from-[#0066cc]/80 to-[#004385]/80"></div>
           <div class="absolute inset-0 flex flex-col justify-center px-[39px]">
             <h1 class="text-[28px] font-[800] leading-[34px] text-white">联系我们</h1>
-            <p class="mt-[10px] text-[16px] text-white/80">2026云南大学首届人工智能创新应用大赛组委会</p>
+            <p class="mt-[10px] text-[16px] text-white/80">2026年云南大学首届人工智能创新应用大赛组委会</p>
           </div>
         </div>
 
