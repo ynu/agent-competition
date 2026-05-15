@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import Dialog from '@/components/Dialog.vue'
+import FileSelector from '@/components/FileSelector.vue'
+import FileInput from '@/components/FileInput.vue'
 import { useNotification } from '@/composables/useNotification'
 import markdownIt from 'markdown-it'
 import { mediaPlugin } from '@/plugins/markdown'
@@ -24,6 +26,8 @@ const selectedContents = ref<Set<number>>(new Set())
 
 const showModal = ref(false)
 const previewMode = ref(false)
+const showFileSelector = ref(false)
+const fileSelectorMode = ref<'image' | 'file'>('image')
 
 const md = markdownIt().use(mediaPlugin)
 const renderMarkdown = (content: string) => {
@@ -327,6 +331,29 @@ function moveDown(content: any, index: number) {
     updateContentOrder(content, newOrder)
   }
 }
+
+function openFileSelector(mode: 'image' | 'file') {
+  fileSelectorMode.value = mode
+  showFileSelector.value = true
+}
+
+function handleFileSelected(result: { path: string; url: string }) {
+  // 根据模式决定插入的格式
+  if (fileSelectorMode.value === 'image') {
+    formData.value.content += `\n![${result.path}](${result.url})\n`
+  } else {
+    // 判断文件类型并选择合适的语法
+    const ext = result.path.split('.').pop()?.toLowerCase() || ''
+    let prefix = ''
+    if (['pdf'].includes(ext)) prefix = '@'
+    else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) prefix = '#'
+    else if (['mp4', 'webm', 'mov', 'avi'].includes(ext)) prefix = '$'
+    else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) prefix = '!'
+
+    formData.value.content += `\n${prefix}[${result.path}](${result.url})\n`
+  }
+  showFileSelector.value = false
+}
 </script>
 
 <template>
@@ -611,11 +638,10 @@ function moveDown(content: any, index: number) {
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1.5">封面图片URL</label>
-              <input
+              <FileInput
                 v-model="formData.cover_image"
-                type="url"
+                accept="image/*"
                 placeholder="https://..."
-                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
@@ -658,13 +684,37 @@ function moveDown(content: any, index: number) {
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-medium text-gray-700">内容</label>
-              <button
-                type="button"
-                @click="previewMode = !previewMode"
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                {{ previewMode ? '编辑' : '预览' }}
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="openFileSelector('image')"
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1"
+                  title="插入图片"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  图片
+                </button>
+                <button
+                  type="button"
+                  @click="openFileSelector('file')"
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1"
+                  title="插入文件"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                  文件
+                </button>
+                <button
+                  type="button"
+                  @click="previewMode = !previewMode"
+                  class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  {{ previewMode ? '编辑' : '预览' }}
+                </button>
+              </div>
             </div>
             <div class="border border-gray-200 rounded-xl overflow-hidden">
               <textarea
@@ -714,6 +764,15 @@ function moveDown(content: any, index: number) {
       @confirm="() => { if (confirmCallback) confirmCallback(); showConfirm = false }"
       @cancel="showConfirm = false"
       @close="showConfirm = false"
+    />
+
+    <!-- File Selector -->
+    <FileSelector
+      :show="showFileSelector"
+      mode="insert"
+      :accept="fileSelectorMode === 'image' ? 'image/*' : '*'"
+      @select="handleFileSelected"
+      @close="showFileSelector = false"
     />
   </div>
 </template>

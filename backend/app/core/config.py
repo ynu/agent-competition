@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: list = ["pdf", "mp4", "jpg", "jpeg", "png", "gif"]
 
+    # 媒体文件管理配置
+    MEDIA_DIR: str = "./media"
+    MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB
+    MEDIA_ALLOWED_EXTENSIONS: list = ["pdf", "jpg", "jpeg", "png", "gif", "svg", "webp", "mp4", "webm", "mp3", "wav", "doc", "docx", "zip"]
+
     # 静态页面配置
     STATIC_DIR: str = "./static"
     STATIC_TEMPLATE_DIR: str = "./templates"

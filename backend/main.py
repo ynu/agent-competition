@@ -48,7 +48,8 @@ from app.api import (
     logs_router,
     permissions_router,
     votes_router,
-    agent_center_router
+    agent_center_router,
+    media_router
 )
 
 
@@ -98,6 +99,7 @@ app.add_middleware(
 # 挂载静态文件目录
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # 注册路由
 app.include_router(auth_router, prefix="/api")
@@ -111,6 +113,7 @@ app.include_router(logs_router, prefix="/api")
 app.include_router(permissions_router, prefix="/api")
 app.include_router(votes_router, prefix="/api")
 app.include_router(agent_center_router, prefix="/api")
+app.include_router(media_router, prefix="/api")
 
 
 @app.get("/")

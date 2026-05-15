@@ -16,6 +16,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // Let axios set the Content-Type for FormData automatically
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
     return config
   },
   (error) => {
@@ -157,4 +161,17 @@ export const materialsApi = {
     api.get('/contents/materials', { params }),
   get: (id: number) => api.get(`/contents/${id}`),
   getBySlug: (slug: string) => api.get(`/contents/slug/${slug}`)
+}
+
+// Media APIs (媒体管理)
+export const mediaApi = {
+  listDirs: () => api.get('/media/dirs'),
+  createDir: (data: { name: string; parent?: string }) => api.post('/media/dirs', data),
+  deleteDir: (path: string) => api.delete(`/media/dirs?path=${encodeURIComponent(path)}`),
+  listFiles: (params?: { path?: string }) => api.get('/media/files', { params }),
+  upload: (data: FormData, onProgress?: (progressEvent: any) => void) =>
+    api.post('/media/upload', data, { onUploadProgress: onProgress }),
+  deleteFile: (path: string) => api.delete(`/media/${encodeURIComponent(path)}`),
+  moveFile: (data: { from_path: string; to_path: string }) => api.post('/media/move', data),
+  getPreviewUrl: (path: string) => `/media/${path}`
 }
