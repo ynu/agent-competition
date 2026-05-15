@@ -61,7 +61,7 @@ const banners = [
 
 const timeline = [
   { title: '大赛报名', date: '2026 年 5 月 15 日 - 6 月 5 日 17:00', icon: timeline01, active: true },
-  { title: '培训赋能', date: '2026年5 月 28 日、29 日、6 月 4 日、5 日晚上举行', icon: timeline02 },
+  { title: '培训赋能', date: '2026 年 5 月 28 日、29 日、6 月 5 日晚上举行', icon: timeline02 },
   { title: '提交作品', date: '2026 年 6 月 22 日 17:00 截止', icon: timeline03, active: true },
   { title: '作品评审', date: '2026 年6 月 23 日 - 30 日', icon: timeline04 },
   { title: '获奖公示', date: '2026 年 7 月上旬', icon: timeline04 }
