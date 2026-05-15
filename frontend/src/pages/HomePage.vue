@@ -219,8 +219,8 @@ onMounted(async () => {
     </div>
 
     <!-- 参赛作品 -->
-    <div class="bg-[url('@/assets/images/bg_home_02.png')] bg-no-repeat bg-cover bg-top py-[70px]">
-      <div class="mx-auto max-w-[1200px]">
+    <div class="">
+      <div class="mx-auto max-w-[1200px] bg-[url('@/assets/images/bg_home_02.png')] bg-no-repeat bg-cover bg-top py-[70px]">
         <component :is="() => SectionTitle({ title: '参赛作品', center: true })" />
         <div v-if="loading" class="mt-[36px] text-center py-12">
           <div class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
