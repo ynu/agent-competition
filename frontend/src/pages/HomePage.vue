@@ -208,7 +208,7 @@ onMounted(async () => {
               <div class="absolute top-0 left-[157px] h-full w-[calc(100%-157px)] z-20 flex flex-col justify-center">
                 <p class="text-[28px] font-[800] text-[#004385]">{{ guide.title }}</p>
                 <div v-if="guide.hasBotton" class="w-full">
-                  <p class="text-[16px] font-[400] text-[#666] mb-10">截止时间：6月19日</p>
+                  <p class="text-[16px] font-[400] text-[#666] mb-10">截止时间：6月5日 17:00</p>
                   <el-button type="primary" round @click.stop="openGuide(guide)">立即报名</el-button>
                 </div>
               </div>
