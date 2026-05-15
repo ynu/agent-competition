@@ -89,12 +89,18 @@ function mediaPlugin(md: any) {
   const defaultLinkOpen = md.renderer.rules.link_open || function(tokens: any, idx: number, options: any, env: any, self: any) {
     return self.renderToken(tokens, idx, options)
   }
+  const defaultLinkClose = md.renderer.rules.link_close || function(tokens: any, idx: number, options: any, env: any, self: any) {
+    return self.renderToken(tokens, idx, options)
+  }
   const defaultImage = md.renderer.rules.image || function(tokens: any, idx: number, options: any, env: any, self: any) {
     return self.renderToken(tokens, idx, options)
   }
   const defaultText = md.renderer.rules.text || function(tokens: any, idx: number, options: any, env: any, self: any) {
     return self.renderToken(tokens, idx, options)
   }
+
+  // 用于跟踪已被处理的媒体 URL
+  let processedUrls: Set<string> = new Set()
 
   // 处理链接自动识别
   md.renderer.rules.link_open = function(tokens: any, idx: number, options: any, env: any, self: any) {
@@ -104,17 +110,41 @@ function mediaPlugin(md: any) {
       const mediaType = detectMediaType(href)
 
       if (mediaType && renderers[mediaType as keyof typeof renderers]) {
-        // 尝试获取链接文本作为标题
+        // 标记该 URL 已被处理
+        processedUrls.add(href)
+
+        // 查找后续文本 token 的内容作为标题
         let title = ''
-        if (tokens[idx + 1] && tokens[idx + 1].type === 'text') {
-          title = tokens[idx + 1].content
-        }
+        // 不显示 title
+        // if (tokens[idx + 1] && tokens[idx + 1].type === 'text' && tokens[idx + 1].content) {
+        //   title = tokens[idx + 1].content
+        // }
         // 移除链接标签，直接渲染媒体
         tokens[idx].tag = 'span'
         return renderers[mediaType as keyof typeof renderers](href, title)
       }
     }
     return defaultLinkOpen(tokens, idx, options, env, self)
+  }
+
+  // 处理链接关闭标签（跳过媒体链接的关闭标签）
+  md.renderer.rules.link_close = function(tokens: any, idx: number, options: any, env: any, self: any) {
+    // 查找对应的 link_open token
+    let linkOpenIdx = idx - 1
+    while (linkOpenIdx >= 0 && tokens[linkOpenIdx].type !== 'link_open') {
+      linkOpenIdx--
+    }
+    if (linkOpenIdx >= 0) {
+      const aIndex = tokens[linkOpenIdx].attrIndex('href')
+      if (aIndex >= 0) {
+        const href = tokens[linkOpenIdx].attrs[aIndex][1]
+        if (detectMediaType(href)) {
+          // 媒体链接的关闭标签不输出任何内容
+          return ''
+        }
+      }
+    }
+    return defaultLinkClose(tokens, idx, options, env, self)
   }
 
   // 处理图片自动识别 PDF 等
@@ -140,24 +170,22 @@ function mediaPlugin(md: any) {
     const content = tokens[idx].content
     if (!content) return defaultText(tokens, idx, options, env, self)
 
+    // 如果该文本已被 link_open 处理过（URL 作为链接文本），清空内容
+    if (processedUrls.has(content.trim())) {
+      return ''
+    }
+
     // 查找所有 URL
     const urls = content.match(urlRegex)
     if (!urls) return defaultText(tokens, idx, options, env, self)
 
-    // 检查是否有媒体类型的 URL
-    let hasMediaUrl = false
-    for (const url of urls) {
-      if (detectMediaType(url)) {
-        hasMediaUrl = true
-        break
-      }
-    }
+    // 检查是否有媒体类型的 URL（且未被 link_open 处理过）
+    const mediaUrls = urls.filter((url: string) => detectMediaType(url) && !processedUrls.has(url))
+    if (mediaUrls.length === 0) return defaultText(tokens, idx, options, env, self)
 
-    if (!hasMediaUrl) return defaultText(tokens, idx, options, env, self)
-
-    // 替换 URL 为媒体 HTML
+    // 替换媒体 URL 为 HTML
     let result = content
-    for (const url of urls) {
+    for (const url of mediaUrls) {
       const mediaType = detectMediaType(url)
       if (mediaType && renderers[mediaType as keyof typeof renderers]) {
         const title = "" // 纯 URL 没有标题，或者可以使用 getUrlFileName(url) 获取文件名作为标题
@@ -232,6 +260,11 @@ function mediaPlugin(md: any) {
     // 移动光标
     state.pos = parenEnd + 1
     return true
+  })
+
+  // 重置处理状态（在每次 render 调用前）
+  md.core.ruler.push('reset_media_state', (state: any) => {
+    processedUrls = new Set()
   })
 }
 
