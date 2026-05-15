@@ -24,7 +24,7 @@ const navItems = [
   { label: '参赛作品', path: '/works' },
   { label: '课程资料', path: '/materials' },
   { label: '智能体广场', externalUrl: externalLinks.agentPlaza },
-  { label: '联系我们', path: '/contact' },
+  { label: '联系我们', path: '/page/contact' },
 ]
 
 const openExternal = (url: string) => {

@@ -95,6 +95,10 @@ const openArticle = (article: any) => {
   router.push(`/news/${article.id}`)
 }
 
+const openCompetition = () => {
+  window.open('/competition.html', '_blank')
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return { day: '01', month: '2026-01' }
   const date = new Date(dateStr)
@@ -156,6 +160,9 @@ onMounted(async () => {
               <p class="mt-[14px] text-[15px] text-[#5d6472] leading-[30px]">
                 在此背景下，为进一步落实学校"提升师生数字素养与技能实施方案"，云南大学联合火山引擎举办首届"火山杯"AI应用创新大赛。
                 赛事鼓励学生运用AI能力，在多元场景中探索技术创新应用，为数智化校园建设提供助力。
+              </p>
+              <p class="mt-[24px]">
+                <el-button type="primary" round @click.stop="openCompetition">查看更多</el-button>
               </p>
             </div>
           </div>
