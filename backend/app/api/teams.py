@@ -172,7 +172,7 @@ async def create_team(
         name=team_data.name,
         description=team_data.description,
         leader_id=current_user.id,
-        status=TeamStatus.PENDING  # 默认待审核
+        status=TeamStatus.APPROVED  # 默认审核通过
     )
     db.add(team)
     db.commit()
@@ -182,8 +182,8 @@ async def create_team(
     leader_member = TeamMember(
         team_id=team.id,
         user_id=current_user.id,
-        student_id=current_user.student_id or "",
-        name=current_user.name or current_user.username,
+        student_id=current_user.username,
+        name=current_user.nickname or current_user.username,
         is_leader=True
     )
     db.add(leader_member)

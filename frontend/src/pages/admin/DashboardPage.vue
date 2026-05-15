@@ -14,39 +14,68 @@ const recentLogs = ref<any[]>([])
 const loading = ref(true)
 
 const statsCards = computed(() => {
-  const cards = [
-    {
-      title: '队伍总数',
-      value: stats.value.teams,
-      icon: 'team',
-      color: 'purple',
-      bg: 'from-purple-500 to-purple-600'
-    },
-    {
-      title: '作品总数',
-      value: stats.value.works,
-      icon: 'works',
-      color: 'green',
-      bg: 'from-green-500 to-green-600'
-    },
-    {
-      title: '投票总数',
-      value: stats.value.votes,
-      icon: 'votes',
-      color: 'red',
-      bg: 'from-red-500 to-red-600'
-    }
-  ]
+  const cards = []
 
-  // 管理员可以看到用户总数
-  if (authStore.isAdmin) {
-    cards.unshift({
-      title: '用户总数',
-      value: stats.value.users,
-      icon: 'users',
-      color: 'blue',
-      bg: 'from-blue-500 to-blue-600'
-    })
+  // 普通用户只显示本队伍相关的统计
+  if (!authStore.isAdmin && !authStore.isReviewer) {
+    cards.push(
+      {
+        title: '队伍成员',
+        value: stats.value.teams,
+        icon: 'team',
+        color: 'purple',
+        bg: 'from-purple-500 to-purple-600'
+      },
+      {
+        title: '作品数量',
+        value: stats.value.works,
+        icon: 'works',
+        color: 'green',
+        bg: 'from-green-500 to-green-600'
+      },
+      {
+        title: '投票数',
+        value: stats.value.votes,
+        icon: 'votes',
+        color: 'red',
+        bg: 'from-red-500 to-red-600'
+      }
+    )
+  } else {
+    // 管理员/评审可以看到全局统计
+    cards.push(
+      {
+        title: '队伍总数',
+        value: stats.value.teams,
+        icon: 'team',
+        color: 'purple',
+        bg: 'from-purple-500 to-purple-600'
+      },
+      {
+        title: '作品总数',
+        value: stats.value.works,
+        icon: 'works',
+        color: 'green',
+        bg: 'from-green-500 to-green-600'
+      },
+      {
+        title: '投票总数',
+        value: stats.value.votes,
+        icon: 'votes',
+        color: 'red',
+        bg: 'from-red-500 to-red-600'
+      }
+    )
+    // 管理员可以看到用户总数
+    if (authStore.isAdmin) {
+      cards.unshift({
+        title: '用户总数',
+        value: stats.value.users,
+        icon: 'users',
+        color: 'blue',
+        bg: 'from-blue-500 to-blue-600'
+      })
+    }
   }
 
   return cards
@@ -59,12 +88,41 @@ onMounted(async () => {
 
 async function fetchStats() {
   try {
-    const res = await api.get('/logs/dashboard-stats', { params: { days: 7 } })
-    stats.value = {
-      users: res.data.users || 0,
-      teams: res.data.teams || 0,
-      works: res.data.works || 0,
-      votes: res.data.votes || 0
+    // 普通用户获取本队伍的统计
+    if (!authStore.isAdmin && !authStore.isReviewer) {
+      try {
+        const res = await api.get('/teams/my/team')
+        if (res.data) {
+          const team = res.data
+          stats.value = {
+            teams: team.members?.length || 0,
+            works: 0,
+            votes: 0
+          }
+          // 获取本队伍的作品数
+          try {
+            const worksRes = await api.get('/works/my/works')
+            stats.value.works = worksRes.data.total || 0
+          } catch (e) {}
+          // 获取本队伍的投票数
+          try {
+            const myReviewsRes = await api.get('/reviews/my-reviews')
+            stats.value.votes = myReviewsRes.data.total || 0
+          } catch (e) {}
+        }
+      } catch (e) {
+        // 用户没有队伍
+        stats.value = { users: 0, teams: 0, works: 0, votes: 0 }
+      }
+    } else {
+      // 管理员/评审获取全局统计
+      const res = await api.get('/logs/dashboard-stats', { params: { days: 7 } })
+      stats.value = {
+        users: res.data.users || 0,
+        teams: res.data.teams || 0,
+        works: res.data.works || 0,
+        votes: res.data.votes || 0
+      }
     }
   } catch (e) {
     console.error(e)

@@ -125,18 +125,23 @@ async function openDetail(team: any) {
 }
 
 async function openEdit(team: any) {
+  // 只有队长可以编辑
+  if (team.leader_id !== authStore.user?.id) {
+    error('操作失败', '只有队长可以编辑队伍')
+    return
+  }
   try {
     const res = await api.get(`/teams/${team.id}`)
     editingTeam.value = res.data
     teamMembers.value = res.data.members || []
-    // Populate form data for editing
+    // Populate form data for editing (只允许编辑名称和描述)
     formData.value = {
       name: res.data.name,
       description: res.data.description || '',
-      members: res.data.members?.map((m: any) => ({
+      members: res.data.members?.filter((m: any) => !m.is_leader).map((m: any) => ({
         student_id: m.student_id,
         name: m.name,
-        is_leader: m.is_leader
+        is_leader: false
       })) || []
     }
     dialogType.value = 'edit'
@@ -465,7 +470,14 @@ function getStatusText(status: string) {
                     详情
                   </button>
                   <button
-                    v-if="canAudit || team.leader_id === authStore.user?.id"
+                    v-if="team.leader_id === authStore.user?.id"
+                    @click="openEdit(team)"
+                    class="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    v-if="team.leader_id === authStore.user?.id || canAudit"
                     @click="handleDelete(team)"
                     class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                   >
@@ -593,11 +605,11 @@ function getStatusText(status: string) {
       </div>
     </Dialog>
 
-    <!-- Create Team Dialog -->
+    <!-- Create/Edit Team Dialog -->
     <Dialog
       :show="showDialog && (dialogType === 'create' || dialogType === 'edit')"
-      title="创建队伍"
-      subtitle="创建新的参赛队伍"
+      :title="dialogType === 'edit' ? '编辑队伍' : '创建队伍'"
+      :subtitle="dialogType === 'edit' ? '修改队伍信息' : '创建新的参赛队伍'"
       width="lg"
       @close="showDialog = false"
     >
@@ -695,7 +707,7 @@ function getStatusText(status: string) {
             type="submit"
             class="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all"
           >
-            {{ editingTeam ? '保存' : '创建' }}
+            {{ dialogType === 'edit' ? '保存修改' : '创建' }}
           </button>
         </div>
       </form>
