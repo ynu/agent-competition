@@ -7,6 +7,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_optional, require_role
@@ -369,7 +370,7 @@ async def create_competition_theme(
         raise HTTPException(status_code=400, detail="主题名称已存在")
 
     # 获取最大order值
-    max_order = db.query(db.func.max(CompetitionTheme.order)).scalar() or -1
+    max_order = db.query(func.max(CompetitionTheme.order)).scalar() or -1
 
     # 创建新主题
     new_theme = CompetitionTheme(
