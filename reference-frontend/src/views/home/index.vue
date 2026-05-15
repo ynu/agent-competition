@@ -148,7 +148,7 @@
 import { h } from 'vue';
 import { useRouter } from 'vue-router';
 import { Suitcase } from '@element-plus/icons-vue';
-import bannerHome from '@/assets/images/banner_home.png';
+import bannerHome from '@/assets/images/banner_1.png';
 import overviewImage from '@/assets/images/img_home_overview.png';
 import guideSignup from '@/assets/images/img_home_01.png';
 import guideMaterials from '@/assets/images/img_home_02.png';
