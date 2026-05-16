@@ -46,6 +46,7 @@ class TeamUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     status: Optional[TeamStatus] = None
+    members: Optional[List[TeamMemberCreate]] = Field(None, description="队员列表（更新时会替换所有非队长队员）")
 
 
 # 队伍响应 schema

@@ -83,14 +83,16 @@ async def get_teams(
     """获取队伍列表"""
     query = db.query(Team)
 
-    # 普通用户只能看到自己和所在队伍
+    # 普通用户只能看到自己是队长的队伍
     if current_user.role == UserRole.USER:
-        user_team_ids = db.query(TeamMember.team_id).filter(
-            TeamMember.user_id == current_user.id
-        ).all()
-        team_ids = [t[0] for t in user_team_ids]
-        if team_ids:
-            query = query.filter(Team.id.in_(team_ids))
+        # 根据当前用户的 username（学工号）查找队长的队伍
+        leader_member = db.query(TeamMember).filter(
+            TeamMember.user_id == current_user.username,
+            TeamMember.is_leader == True
+        ).first()
+
+        if leader_member:
+            query = query.filter(Team.id == leader_member.team_id)
         else:
             return PageResponse(total=0, page=page, page_size=page_size, items=[])
 
@@ -160,9 +162,25 @@ async def create_team(
     if existing_leader:
         raise HTTPException(status_code=400, detail="您已经是队长，不能再创建新队伍")
 
+    # 检查队员是否已在其他队伍
+    if team_data.members:
+        for member_data in team_data.members:
+            if member_data.is_leader:
+                continue
+            # 检查学工号是否已在其他队伍
+            existing_in_team = db.query(TeamMember).filter(
+                TeamMember.student_id == member_data.student_id
+            ).first()
+            if existing_in_team:
+                team = db.query(Team).filter(Team.id == existing_in_team.team_id).first()
+                team_name = team.name if team else "其他队伍"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"学工号 {member_data.student_id} 已在队伍 \"{team_name}\" 中"
+                )
+
     # 检查成员数量限制
     max_members = get_max_team_members(db)
-    # 至少要有队长自己 + 成员
     member_count = len(team_data.members) if team_data.members else 1
     if member_count > max_members:
         raise HTTPException(status_code=400, detail=f"队伍最多{max_members}名成员")
@@ -178,10 +196,10 @@ async def create_team(
     db.commit()
     db.refresh(team)
 
-    # 添加队长（当前用户）
+    # 添加队长（当前用户）- user_id 默认等于 student_id
     leader_member = TeamMember(
         team_id=team.id,
-        user_id=current_user.id,
+        user_id=current_user.username,  # 默认等于学工号
         student_id=current_user.username,
         name=current_user.nickname or current_user.username,
         is_leader=True
@@ -196,7 +214,7 @@ async def create_team(
                 continue
             member = TeamMember(
                 team_id=team.id,
-                user_id=None,
+                user_id=member_data.student_id,  # 默认等于学工号
                 student_id=member_data.student_id,
                 name=member_data.name,
                 is_leader=False
@@ -229,8 +247,9 @@ async def update_team(
     if team.leader_id != current_user.id and current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
         raise HTTPException(status_code=403, detail="只有队长或管理员可以修改队伍信息")
 
-    # 更新字段
+    # 更新字段（排除 members）
     update_data = team_data.model_dump(exclude_unset=True)
+    update_data.pop("members", None)
 
     # 非管理员不能修改状态
     if current_user.role != UserRole.ADMIN:
@@ -238,6 +257,41 @@ async def update_team(
 
     for key, value in update_data.items():
         setattr(team, key, value)
+
+    # 处理队员更新（跳过队长，删除其他队员，添加新队员）
+    if team_data.members is not None:
+        # 删除除队长外的所有队员
+        db.query(TeamMember).filter(
+            TeamMember.team_id == team_id,
+            TeamMember.is_leader == False
+        ).delete()
+
+        # 检查新队员是否在其他队伍
+        for member_data in team_data.members:
+            existing_in_team = db.query(TeamMember).filter(
+                TeamMember.student_id == member_data.student_id,
+                TeamMember.team_id != team_id
+            ).first()
+            if existing_in_team:
+                other_team = db.query(Team).filter(Team.id == existing_in_team.team_id).first()
+                team_name = other_team.name if other_team else "其他队伍"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"学工号 {member_data.student_id} 已在队伍 \"{team_name}\" 中"
+                )
+
+        # 添加新队员（不包含队长）
+        for member_data in team_data.members:
+            if member_data.is_leader:
+                continue
+            member = TeamMember(
+                team_id=team_id,
+                user_id=member_data.student_id,  # 默认等于学工号
+                student_id=member_data.student_id,
+                name=member_data.name,
+                is_leader=False
+            )
+            db.add(member)
 
     db.commit()
     db.refresh(team)
@@ -282,6 +336,11 @@ async def delete_team(
         raise HTTPException(status_code=400, detail="该队伍有待审核的作品，请先处理后再删除")
 
     team_name = team.name
+
+    # 先删除队伍的所有队员
+    db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
+
+    # 再删除队伍
     db.delete(team)
     db.commit()
 

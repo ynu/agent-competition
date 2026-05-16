@@ -31,7 +31,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
     # 关系
-    teams = relationship("TeamMember", back_populates="user")
     teams_as_leader = relationship("Team", back_populates="leader", foreign_keys="Team.leader_id")
     votes = relationship("Vote", back_populates="user")
     reviews = relationship("Review", back_populates="user")

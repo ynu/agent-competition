@@ -73,11 +73,20 @@ function clearSelection() {
 }
 
 async function fetchUserTeamStatus() {
+  // 普通用户检查是否是队长
+  if (authStore.isAdmin || authStore.isReviewer) {
+    userHasTeam.value = false
+    userTeamId.value = null
+    return
+  }
   try {
-    const res = await api.get('/teams/my/team')
-    if (res.data) {
+    const res = await api.get('/teams', { params: { page_size: 1 } })
+    if (res.data.items && res.data.items.length > 0) {
       userHasTeam.value = true
-      userTeamId.value = res.data.id
+      userTeamId.value = res.data.items[0].id
+    } else {
+      userHasTeam.value = false
+      userTeamId.value = null
     }
   } catch (e) {
     userHasTeam.value = false
@@ -126,7 +135,7 @@ async function openDetail(team: any) {
 
 async function openEdit(team: any) {
   // 只有队长可以编辑
-  if (team.leader_id !== authStore.user?.id) {
+  if (!teams.value.some(t => t.id === team.id && t.leader_id === authStore.user?.id)) {
     error('操作失败', '只有队长可以编辑队伍')
     return
   }
@@ -134,7 +143,8 @@ async function openEdit(team: any) {
     const res = await api.get(`/teams/${team.id}`)
     editingTeam.value = res.data
     teamMembers.value = res.data.members || []
-    // Populate form data for editing (只允许编辑名称和描述)
+    // Populate form data for editing
+    // 只填充普通成员（不含队长）
     formData.value = {
       name: res.data.name,
       description: res.data.description || '',
@@ -183,15 +193,11 @@ function openCreateTeam() {
     return
   }
   editingTeam.value = null
-  // 默认使用当前用户作为队长
+  // 只创建一个空的队长占位，不实际提交
   formData.value = {
     name: '',
     description: '',
-    members: [{
-      student_id: currentUser.value?.username || '',
-      name: currentUser.value?.nickname || currentUser.value?.username || '',
-      is_leader: true
-    }]
+    members: []  // 队长在提交时自动添加
   }
   dialogType.value = 'create'
   showDialog.value = true
@@ -212,19 +218,49 @@ function removeMember(index: number) {
   }
 }
 
+function removeMemberByStudentId(studentId: string) {
+  const index = formData.value.members.findIndex((m: any) => m.student_id === studentId && !m.is_leader)
+  if (index !== -1) {
+    formData.value.members.splice(index, 1)
+  }
+}
+
 async function handleSaveTeam() {
+  // 验证必填字段
+  for (const member of formData.value.members) {
+    if (!member.is_leader) {
+      if (!member.student_id?.trim()) {
+        error('操作失败', '队员学工号不能为空')
+        return
+      }
+      if (!member.name?.trim()) {
+        error('操作失败', '队员姓名不能为空')
+        return
+      }
+    }
+  }
+
   try {
     const data = { ...formData.value }
-    // Remove is_leader from members as it's set server-side
-    data.members = data.members.map((m: any) => ({
-      student_id: m.student_id,
-      name: m.name,
-      is_leader: m.is_leader
-    }))
+    // 移除队长的学工号（避免重复），只传普通成员
+    data.members = data.members
+      .filter((m: any) => !m.is_leader)
+      .map((m: any) => ({
+        student_id: m.student_id.trim(),
+        name: m.name.trim(),
+        is_leader: false
+      }))
+
     if (editingTeam.value) {
       await api.put(`/teams/${editingTeam.value.id}`, data)
       success('更新成功')
     } else {
+      // 创建时添加队长信息
+      data.members.unshift({
+        student_id: currentUser.value?.username || '',
+        name: currentUser.value?.nickname || currentUser.value?.username || '',
+        is_leader: true
+      })
       await api.post('/teams', data)
       success('创建成功')
     }
@@ -470,14 +506,14 @@ function getStatusText(status: string) {
                     详情
                   </button>
                   <button
-                    v-if="team.leader_id === authStore.user?.id"
+                    v-if="teams.some(t => t.id === team.id && t.leader_id === authStore.user?.id)"
                     @click="openEdit(team)"
                     class="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                   >
                     编辑
                   </button>
                   <button
-                    v-if="team.leader_id === authStore.user?.id || canAudit"
+                    v-if="teams.some(t => t.id === team.id && t.leader_id === authStore.user?.id) || canAudit"
                     @click="handleDelete(team)"
                     class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                   >
@@ -636,43 +672,67 @@ function getStatusText(status: string) {
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">成员 <span class="text-xs text-gray-400">(创建后队长不可修改)</span></label>
           <div class="space-y-2">
-            <div v-for="(member, index) in formData.members" :key="index" class="flex gap-2 items-center">
-              <!-- 队长信息（只读） -->
-              <template v-if="member.is_leader">
-                <input
-                  v-model="member.name"
-                  type="text"
-                  readonly
-                  disabled
-                  class="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-600 text-sm cursor-not-allowed"
-                  placeholder="队长姓名"
-                />
-                <input
-                  v-model="member.student_id"
-                  type="text"
-                  readonly
-                  disabled
-                  class="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-600 text-sm cursor-not-allowed"
-                  placeholder="队长学工号"
-                />
-                <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-600 text-xs font-medium">
-                  队长
-                </div>
-              </template>
-              <!-- 普通成员 -->
-              <template v-else>
+            <!-- 队长信息（只读，琥珀色背景） -->
+            <div class="flex gap-2 items-center">
+              <input
+                :value="currentUser?.nickname || currentUser?.username || ''"
+                type="text"
+                readonly
+                disabled
+                class="flex-1 px-3 py-2 border border-amber-200 rounded-lg bg-amber-50 text-gray-600 text-sm cursor-not-allowed"
+                placeholder="队长姓名"
+              />
+              <input
+                :value="currentUser?.username || ''"
+                type="text"
+                readonly
+                disabled
+                class="flex-1 px-3 py-2 border border-amber-200 rounded-lg bg-amber-50 text-gray-600 text-sm cursor-not-allowed"
+                placeholder="队长学工号"
+              />
+              <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-600 text-xs font-medium">
+                队长
+              </div>
+            </div>
+            <!-- 编辑模式下：只显示普通成员（跳过 formData 中的队长） -->
+            <!-- 创建模式下：显示所有 formData.members -->
+            <template v-if="dialogType === 'edit'">
+              <div v-for="member in formData.members.filter((m: any) => !m.is_leader)" :key="'edit-' + member.student_id" class="flex gap-2 items-center">
                 <input
                   v-model="member.name"
                   type="text"
                   placeholder="姓名"
-                  required
                   class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                 />
                 <input
                   v-model="member.student_id"
                   type="text"
                   placeholder="学工号"
-                  required
+                  class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                />
+                <button
+                  type="button"
+                  @click="removeMemberByStudentId(member.student_id)"
+                  class="px-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div v-for="(member, index) in formData.members" :key="'create-' + index" class="flex gap-2 items-center">
+                <input
+                  v-model="member.name"
+                  type="text"
+                  placeholder="姓名"
+                  class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                />
+                <input
+                  v-model="member.student_id"
+                  type="text"
+                  placeholder="学工号"
                   class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                 />
                 <button
@@ -684,8 +744,8 @@ function getStatusText(status: string) {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
                 </button>
-              </template>
-            </div>
+              </div>
+            </template>
           </div>
           <button
             type="button"
