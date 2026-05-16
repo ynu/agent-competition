@@ -22,6 +22,7 @@ const menuItems = computed(() => [
   { path: '/admin/contents', name: '内容管理', icon: 'content', roles: ['reviewer', 'admin'] },
   { path: '/admin/permissions', name: '权限管理', icon: 'permission', roles: ['admin'] },
   { path: '/admin/settings', name: '配置管理', icon: 'settings', roles: ['admin'] },
+  { path: '/admin/webhooks', name: 'Webhook', icon: 'webhook', roles: ['admin'] },
   { path: '/admin/logs', name: '日志管理', icon: 'logs', roles: ['reviewer', 'admin'] },
 ])
 
@@ -104,6 +105,9 @@ const sidebarCollapsed = ref(false)
                     </svg>
                     <svg v-else-if="item.icon === 'votes'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                    <svg v-else-if="item.icon === 'webhook'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                     </svg>
                   </div>
                   <span v-if="!sidebarCollapsed" class="whitespace-nowrap font-medium">{{ item.name }}</span>

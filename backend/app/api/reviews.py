@@ -12,6 +12,8 @@ from app.models.work import Work, Review, WorkStatus
 from app.models.setting import Log
 from app.schemas.work import ReviewCreate, ReviewUpdate, ReviewResponse, WorkResponse
 from app.schemas.common import PageResponse
+from app.services.webhook import trigger_webhook
+from app.models.webhook import WebhookEventType
 
 router = APIRouter(prefix="/reviews", tags=["评审管理"])
 
@@ -118,7 +120,7 @@ async def create_review(
     add_log(db, current_user.id, "review", "work", work.id,
             f"评审作品: {work.name}, 分数: {review_data.score}")
 
-    return ReviewResponse(
+    response = ReviewResponse(
         id=review.id,
         work_id=review.work_id,
         user_id=review.user_id,
@@ -128,6 +130,19 @@ async def create_review(
         created_at=review.created_at,
         updated_at=review.updated_at
     )
+
+    # 触发 Webhook
+    trigger_webhook(db, WebhookEventType.REVIEW_CREATED, {
+        "id": review.id,
+        "work_id": review.work_id,
+        "work_name": work.name,
+        "user_id": current_user.id,
+        "reviewer_name": current_user.nickname or current_user.username,
+        "score": review.score,
+        "comment": review.comment
+    }, "created")
+
+    return response
 
 
 @router.put("/{review_id}", response_model=ReviewResponse)
@@ -164,7 +179,7 @@ async def update_review(
     add_log(db, current_user.id, "update_review", "work", work.id,
             f"更新评审: {work.name}")
 
-    return ReviewResponse(
+    response = ReviewResponse(
         id=review.id,
         work_id=review.work_id,
         user_id=review.user_id,
@@ -174,6 +189,19 @@ async def update_review(
         created_at=review.created_at,
         updated_at=review.updated_at
     )
+
+    # 触发 Webhook
+    trigger_webhook(db, WebhookEventType.REVIEW_UPDATED, {
+        "id": review.id,
+        "work_id": review.work_id,
+        "work_name": work.name,
+        "user_id": current_user.id,
+        "score": review.score,
+        "comment": review.comment,
+        "updated_fields": list(update_data.keys())
+    }, "updated")
+
+    return response
 
 
 @router.get("/my-reviews", response_model=PageResponse)

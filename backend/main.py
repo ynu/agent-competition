@@ -49,7 +49,8 @@ from app.api import (
     permissions_router,
     votes_router,
     agent_center_router,
-    media_router
+    media_router,
+    webhooks_router
 )
 
 
@@ -114,6 +115,7 @@ app.include_router(permissions_router, prefix="/api")
 app.include_router(votes_router, prefix="/api")
 app.include_router(agent_center_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
+app.include_router(webhooks_router, prefix="/api")
 
 
 @app.get("/")
