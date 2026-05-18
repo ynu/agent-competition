@@ -378,7 +378,7 @@ async def create_work(
     response = WorkResponse.model_validate(work)
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.WORK_CREATED, {
+    await trigger_webhook(db, WebhookEventType.WORK_CREATED, {
         "id": work.id,
         "name": work.name,
         "description": work.description,
@@ -432,7 +432,7 @@ async def update_work(
     response = WorkResponse.model_validate(work)
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.WORK_UPDATED, {
+    await trigger_webhook(db, WebhookEventType.WORK_UPDATED, {
         "id": work.id,
         "name": work.name,
         "description": work.description,
@@ -482,7 +482,7 @@ async def delete_work(
     add_log(db, current_user.id, "delete", "work", work_id, f"删除作品: {work_name}")
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.WORK_DELETED, work_data, "deleted")
+    await trigger_webhook(db, WebhookEventType.WORK_DELETED, work_data, "deleted")
 
     return {"message": "删除成功"}
 
@@ -533,7 +533,7 @@ async def vote_work(
     add_log(db, current_user.id, "vote", "work", work_id, f"投票: {work.name}")
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.VOTE_CREATED, {
+    await trigger_webhook(db, WebhookEventType.VOTE_CREATED, {
         "id": vote.id,
         "work_id": work_id,
         "work_name": work.name,

@@ -330,7 +330,7 @@ async def test_webhook(
 ):
     """测试 Webhook"""
     service = WebhookService(db)
-    result = service.test_webhook(webhook_id)
+    result = await service.test_webhook(webhook_id)
     return TestWebhookResponse(**result)
 
 

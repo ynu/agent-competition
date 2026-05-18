@@ -4,7 +4,7 @@ Webhook 服务层
 import json
 import asyncio
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 
@@ -23,11 +23,12 @@ class WebhookService:
     @staticmethod
     def create_delivery_payload(event: str, data: Any, action: str = None) -> dict:
         """创建投递载荷（GitHub 风格）"""
+        now = datetime.now(timezone.utc)
         return {
-            "id": f"wh_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(data)) % 100000}",
+            "id": f"wh_{now.strftime('%Y%m%d%H%M%S')}_{hash(str(data)) % 100000}",
             "event": event,
             "action": action,
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "created_at": now.isoformat().replace("+00:00", "Z"),
             "data": data
         }
 
@@ -96,7 +97,7 @@ class WebhookService:
         self.db.add(delivery)
         self.db.commit()
 
-    def trigger_event(self, event: str, data: Any, action: str = None):
+    async def trigger_event(self, event: str, data: Any, action: str = None):
         """触发 Webhook 事件"""
         # 获取订阅了该事件的所有活跃 Webhook
         webhooks = self.db.query(Webhook).filter(
@@ -114,18 +115,14 @@ class WebhookService:
         # 创建载荷
         payload = self.create_delivery_payload(event, data, action)
 
-        # 同步触发所有匹配的 Webhook
         for webhook in matching_webhooks:
-            self._trigger_single(webhook, payload)
+            await self._trigger_single(webhook, payload)
 
-    def _trigger_single(self, webhook: Webhook, payload: dict, attempt: int = 1):
-        """触发单个 Webhook（同步版本）"""
+    async def _trigger_single(self, webhook: Webhook, payload: dict, attempt: int = 1):
+        """触发单个 Webhook"""
         payload_str = json.dumps(payload, ensure_ascii=False)
 
-        # 执行请求
-        status, response_body, error = asyncio.run(
-            self._send_request(webhook, payload, attempt)
-        )
+        status, response_body, error = await self._send_request(webhook, payload, attempt)
 
         # 记录投递
         self._record_delivery(
@@ -139,12 +136,12 @@ class WebhookService:
         )
 
         # 更新 Webhook 最后触发信息
-        webhook.last_triggered_at = datetime.utcnow()
+        webhook.last_triggered_at = datetime.now(timezone.utc)
         webhook.last_trigger_status = status
         self.db.commit()
 
     async def trigger_event_async(self, event: str, data: Any, action: str = None):
-        """异步触发 Webhook 事件"""
+        """异步并发触发 Webhook 事件"""
         webhooks = self.db.query(Webhook).filter(
             Webhook.is_active == True
         ).all()
@@ -172,7 +169,7 @@ class WebhookService:
 
         status, response_body, error = await self._send_request(webhook, payload, attempt)
 
-        # 记录投递（在事件循环外需要特殊处理）
+        # 记录投递
         self._record_delivery(
             webhook.id,
             payload["event"],
@@ -183,11 +180,11 @@ class WebhookService:
             attempt
         )
 
-        webhook.last_triggered_at = datetime.utcnow()
+        webhook.last_triggered_at = datetime.now(timezone.utc)
         webhook.last_trigger_status = status
         self.db.commit()
 
-    def test_webhook(self, webhook_id: int) -> dict:
+    async def test_webhook(self, webhook_id: int) -> dict:
         """测试 Webhook"""
         webhook = self.db.query(Webhook).filter(Webhook.id == webhook_id).first()
         if not webhook:
@@ -201,9 +198,9 @@ class WebhookService:
         )
 
         payload_str = json.dumps(test_payload, ensure_ascii=False)
-        status, response_body, error = asyncio.run(
-            self._send_request(webhook, test_payload)
-        )
+        
+        # use await/async in fastapi context
+        status, response_body, error = await self._send_request(webhook, test_payload)
 
         # 记录测试投递
         self._record_delivery(
@@ -215,7 +212,7 @@ class WebhookService:
             error
         )
 
-        webhook.last_triggered_at = datetime.utcnow()
+        webhook.last_triggered_at = datetime.now(timezone.utc)
         webhook.last_trigger_status = status
         self.db.commit()
 
@@ -227,7 +224,7 @@ class WebhookService:
         }
 
 
-def trigger_webhook(db: Session, event: str, data: Any, action: str = None):
+async def trigger_webhook(db: Session, event: str, data: Any, action: str = None):
     """便捷函数：触发 Webhook 事件"""
     service = WebhookService(db)
-    service.trigger_event(event, data, action)
+    await service.trigger_event(event, data, action)

@@ -132,7 +132,7 @@ async def create_review(
     )
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.REVIEW_CREATED, {
+    await trigger_webhook(db, WebhookEventType.REVIEW_CREATED, {
         "id": review.id,
         "work_id": review.work_id,
         "work_name": work.name,
@@ -191,7 +191,7 @@ async def update_review(
     )
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.REVIEW_UPDATED, {
+    await trigger_webhook(db, WebhookEventType.REVIEW_UPDATED, {
         "id": review.id,
         "work_id": review.work_id,
         "work_name": work.name,

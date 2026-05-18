@@ -258,7 +258,7 @@ async def create_content(
     response = ContentResponse.model_validate(content)
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.CONTENT_CREATED, {
+    await trigger_webhook(db, WebhookEventType.CONTENT_CREATED, {
         "id": content.id,
         "title": content.title,
         "slug": content.slug,
@@ -298,7 +298,7 @@ async def update_content(
     response = ContentResponse.model_validate(content)
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.CONTENT_UPDATED, {
+    await trigger_webhook(db, WebhookEventType.CONTENT_UPDATED, {
         "id": content.id,
         "title": content.title,
         "slug": content.slug,
@@ -333,7 +333,7 @@ async def delete_content(
     add_log(db, current_user.id, "delete", "content", content_id, f"删除内容: {title}")
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.CONTENT_DELETED, content_data, "deleted")
+    await trigger_webhook(db, WebhookEventType.CONTENT_DELETED, content_data, "deleted")
 
     return {"message": "删除成功"}
 

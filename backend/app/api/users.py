@@ -111,7 +111,7 @@ async def create_user(
     response = UserResponse.model_validate(user)
 
     # 触发 Webhook
-    trigger_webhook(db, WebhookEventType.USER_REGISTERED, {
+    await trigger_webhook(db, WebhookEventType.USER_REGISTERED, {
         "id": user.id,
         "username": user.username,
         "email": user.email,
