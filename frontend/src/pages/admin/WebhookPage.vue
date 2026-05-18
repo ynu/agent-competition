@@ -13,13 +13,23 @@ const showDialog = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingWebhook = ref<any>(null)
 
-const form = ref({
+interface WebhookForm {
+  name: string
+  url: string
+  secret?: string
+  events: string[]
+  description: string
+  headers: Record<string, string>
+  is_active: boolean
+}
+
+const form = ref<WebhookForm>({
   name: '',
   url: '',
   secret: '',
-  events: [] as string[],
+  events: [],
   description: '',
-  headers: {} as Record<string, string>,
+  headers: {},
   is_active: true
 })
 
