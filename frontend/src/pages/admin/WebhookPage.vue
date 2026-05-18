@@ -360,9 +360,10 @@ const deliveryDialogTitle = computed(() => `投递记录 - ${currentWebhook.valu
 
     <!-- Create/Edit Dialog -->
     <Dialog
-      v-model="showDialog"
+      :show="showDialog"
       :title="dialogTitle"
       width="3xl"
+      @close="showDialog = false"
     >
       <div class="p-6 space-y-5">
         <div>

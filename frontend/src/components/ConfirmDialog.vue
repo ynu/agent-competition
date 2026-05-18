@@ -21,7 +21,8 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 
-watch(() => [props.show, props.modelValue], ([show, val]) => {
+// ✅ 修复：改成正确的 Vue 3 多源监听写法，传入数组，而不是返回数组的函数
+watch([() => props.show, () => props.modelValue], ([show, val]) => {
   isOpen.value = show ?? val ?? false
 }, { immediate: true })
 
@@ -53,10 +54,10 @@ const handleCancel = () => {
 
 <template>
   <Dialog
-    :modelValue="isOpen"
+    :show="isOpen"
     :title="title || '确认操作'"
     width="sm"
-    @update:modelValue="(v) => { isOpen = v; if (!v) emit('close') }"
+    @close="isOpen = false; emit('close')"
   >
     <div class="p-6">
       <div class="flex items-start gap-4">
