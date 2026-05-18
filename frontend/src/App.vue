@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import Notification from '@/components/Notification.vue'
+import api from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +12,7 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
 const isAdminPage = computed(() => route.path.startsWith('/admin'))
+const unreadMessageCount = ref(0)
 
 const menuItems = computed(() => [
   { path: '/admin', name: '仪表盘', icon: 'dashboard', roles: ['user', 'reviewer', 'admin'] },
@@ -20,6 +22,7 @@ const menuItems = computed(() => [
   { path: '/admin/reviews', name: '评审管理', icon: 'review', roles: ['reviewer', 'admin'] },
   { path: '/admin/votes', name: '投票管理', icon: 'votes', roles: ['reviewer', 'admin'] },
   { path: '/admin/contents', name: '内容管理', icon: 'content', roles: ['reviewer', 'admin'] },
+  { path: '/admin/messages', name: '消息管理', icon: 'message', roles: ['user', 'reviewer', 'admin'] },
   { path: '/admin/permissions', name: '权限管理', icon: 'permission', roles: ['admin'] },
   { path: '/admin/settings', name: '配置管理', icon: 'settings', roles: ['admin'] },
   { path: '/admin/webhooks', name: 'Webhook', icon: 'webhook', roles: ['admin'] },
@@ -32,10 +35,88 @@ const filteredMenuItems = computed(() => {
 })
 
 const sidebarCollapsed = ref(false)
+
+async function fetchUnreadMessageCount() {
+  if (!authStore.isLoggedIn) return
+  try {
+    const res = await api.get('/messages/unread-count')
+    unreadMessageCount.value = res.data.unread_count || 0
+  } catch (e) {
+    console.error('Failed to fetch unread message count', e)
+  }
+}
+
+async function fetchUnreadMessages() {
+  if (!authStore.isLoggedIn) return []
+  try {
+    const res = await api.get('/messages', { params: { page: 1, page_size: 10, is_read: false } })
+    return res.data.items || []
+  } catch (e) {
+    console.error('Failed to fetch unread messages', e)
+    return []
+  }
+}
+
+const unreadDropdownMessages = ref<any[]>([])
+const showUnreadDropdown = ref(false)
+
+async function toggleUnreadDropdown() {
+  showUnreadDropdown.value = !showUnreadDropdown.value
+  if (showUnreadDropdown.value && unreadDropdownMessages.value.length === 0) {
+    unreadDropdownMessages.value = await fetchUnreadMessages()
+  }
+}
+
+function viewUnreadMessage(msg: any) {
+  showUnreadDropdown.value = false
+  router.push('/admin/messages')
+  // 标记为已读
+  if (!msg.is_read) {
+    api.put(`/messages/${msg.id}/read`).then(() => {
+      msg.is_read = true
+      if (unreadMessageCount.value > 0) {
+        unreadMessageCount.value--
+      }
+    })
+  }
+}
+
+function formatDateShort(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  if (hours < 24) return `${hours}小时前`
+  if (days < 7) return `${days}天前`
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+}
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('.unread-dropdown-container')) {
+    showUnreadDropdown.value = false
+  }
+}
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    fetchUnreadMessageCount()
+  }
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col">
+  <div @click="handleClickOutside" class="min-h-screen bg-gray-50 flex flex-col">
     <!-- Admin Layout -->
     <template v-if="isAdminPage">
       <div class="flex h-screen overflow-hidden">
@@ -109,6 +190,9 @@ const sidebarCollapsed = ref(false)
                     <svg v-else-if="item.icon === 'webhook'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                     </svg>
+                    <svg v-else-if="item.icon === 'message'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
                   </div>
                   <span v-if="!sidebarCollapsed" class="whitespace-nowrap font-medium">{{ item.name }}</span>
                 </RouterLink>
@@ -133,6 +217,64 @@ const sidebarCollapsed = ref(false)
           <header class="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6">
             <h1 class="text-lg font-semibold text-gray-800">{{ route.meta?.title || '管理后台' }}</h1>
             <div class="flex items-center gap-4">
+              <!-- Messages Dropdown -->
+              <div class="relative unread-dropdown-container">
+                <button
+                  @click="toggleUnreadDropdown"
+                  class="relative p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                  </svg>
+                  <span
+                    v-if="unreadMessageCount > 0"
+                    class="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-red-500 text-white text-xs font-medium rounded-full"
+                  >
+                    {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                  </span>
+                </button>
+
+                <!-- Unread Messages Dropdown -->
+                <Transition name="dropdown">
+                  <div
+                    v-if="showUnreadDropdown"
+                    class="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50"
+                  >
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <span class="text-sm font-medium text-gray-700">未读消息</span>
+                      <RouterLink
+                        to="/admin/messages"
+                        @click="showUnreadDropdown = false"
+                        class="text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        查看全部
+                      </RouterLink>
+                    </div>
+                    <div class="max-h-96 overflow-y-auto">
+                      <div v-if="unreadDropdownMessages.length === 0" class="px-4 py-8 text-center text-gray-400 text-sm">
+                        暂无未读消息
+                      </div>
+                      <div
+                        v-else
+                        v-for="msg in unreadDropdownMessages"
+                        :key="msg.id"
+                        @click="viewUnreadMessage(msg)"
+                        class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-b-0"
+                      >
+                        <div class="flex items-start gap-3">
+                          <div class="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ msg.title }}</p>
+                            <p class="text-xs text-gray-500 truncate mt-0.5">{{ msg.sender_nickname || msg.sender_username }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ formatDateShort(msg.created_at) }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+              <!-- Theme toggle -->
               <button
                 @click="themeStore.toggleDark()"
                 class="relative w-14 h-8 rounded-full transition-all duration-300"
@@ -193,3 +335,16 @@ const sidebarCollapsed = ref(false)
 
   <Notification />
 </template>
+
+<style scoped>
+/* Dropdown transition */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+</style>

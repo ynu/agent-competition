@@ -142,6 +142,11 @@ const router = createRouter({
           name: 'admin-webhooks',
           component: () => import('@/pages/admin/WebhookPage.vue'),
           meta: { requiresAdmin: true }
+        },
+        {
+          path: 'messages',
+          name: 'admin-messages',
+          component: () => import('@/pages/admin/MessagesPage.vue')
         }
       ]
     }

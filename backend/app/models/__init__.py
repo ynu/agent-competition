@@ -5,6 +5,7 @@ from app.models.work import Work, Review, Vote, WorkStatus
 from app.models.content import Content, ContentType, ContentContentType
 from app.models.setting import Setting, Log, CompetitionTheme
 from app.models.webhook import Webhook, WebhookDelivery, WebhookEventType
+from app.models.message import Message
 
 __all__ = [
     "User", "UserRole",
@@ -12,5 +13,6 @@ __all__ = [
     "Work", "Review", "Vote", "WorkStatus",
     "Content", "ContentType", "ContentContentType",
     "Setting", "Log", "CompetitionTheme",
-    "Webhook", "WebhookDelivery", "WebhookEventType"
+    "Webhook", "WebhookDelivery", "WebhookEventType",
+    "Message"
 ]

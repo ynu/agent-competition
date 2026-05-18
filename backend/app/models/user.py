@@ -35,6 +35,8 @@ class User(Base):
     votes = relationship("Vote", back_populates="user")
     reviews = relationship("Review", back_populates="user")
     logs = relationship("Log", back_populates="user")
+    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    received_messages = relationship("Message", foreign_keys="Message.receiver_id", back_populates="receiver")
 
     def __repr__(self):
         return f"<User {self.username}>"
