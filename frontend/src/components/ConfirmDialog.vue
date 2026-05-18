@@ -3,8 +3,9 @@ import { ref, watch } from 'vue'
 import Dialog from './Dialog.vue'
 
 const props = defineProps<{
-  show: boolean
-  title: string
+  modelValue?: boolean
+  show?: boolean
+  title?: string
   message: string
   confirmText?: string
   cancelText?: string
@@ -12,10 +13,26 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
   confirm: []
   cancel: []
   close: []
 }>()
+
+const isOpen = ref(false)
+
+// ✅ 修复：改成正确的 Vue 3 多源监听写法，传入数组，而不是返回数组的函数
+watch([() => props.show, () => props.modelValue], ([show, val]) => {
+  isOpen.value = show ?? val ?? false
+}, { immediate: true })
+
+watch(isOpen, (val) => {
+  if (val) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+})
 
 const typeColors = {
   danger: 'from-red-600 to-red-700',
@@ -23,21 +40,24 @@ const typeColors = {
   info: 'from-blue-600 to-blue-700'
 }
 
-watch(() => props.show, (val) => {
-  if (val) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
-})
+const handleConfirm = () => {
+  emit('update:modelValue', false)
+  emit('confirm')
+}
+
+const handleCancel = () => {
+  emit('update:modelValue', false)
+  emit('cancel')
+  emit('close')
+}
 </script>
 
 <template>
   <Dialog
-    :show="show"
-    :title="title"
+    :show="isOpen"
+    :title="title || '确认操作'"
     width="sm"
-    @close="emit('close')"
+    @close="isOpen = false; emit('close')"
   >
     <div class="p-6">
       <div class="flex items-start gap-4">
@@ -58,13 +78,13 @@ watch(() => props.show, (val) => {
     </div>
     <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
       <button
-        @click="emit('cancel')"
+        @click="handleCancel"
         class="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-100 font-medium text-gray-700 transition-colors"
       >
         {{ cancelText || '取消' }}
       </button>
       <button
-        @click="emit('confirm')"
+        @click="handleConfirm"
         :class="[
           'px-5 py-2.5 text-white rounded-xl font-medium transition-all shadow-lg',
           'bg-gradient-to-r ' + (typeColors[type || 'info'])

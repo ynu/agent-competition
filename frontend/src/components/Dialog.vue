@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { watch, ref } from 'vue'
+import { watch, ref, computed } from 'vue'
 
 const props = defineProps<{
-  show: boolean
-  title: string
+  show?: boolean
+  modelValue?: boolean
+  title?: string
   subtitle?: string
   width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full' | '90vw'
   maxHeight?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '70vh' | '80vh' | '90vh' | '95vh'
 }>()
 
 const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
   close: []
 }>()
+
+const isOpen = computed(() => props.show ?? props.modelValue ?? false)
+
+const emitClose = () => {
+  emit('update:modelValue', false)
+  emit('close')
+}
 
 const isMaximized = ref(false)
 
@@ -47,7 +56,7 @@ function toggleMaximize() {
   isMaximized.value = !isMaximized.value
 }
 
-watch(() => props.show, (val) => {
+watch(isOpen, (val) => {
   if (val) {
     document.body.style.overflow = 'hidden'
     isMaximized.value = false
@@ -60,7 +69,7 @@ watch(() => props.show, (val) => {
 <template>
   <Teleport to="body">
     <Transition name="dialog">
-      <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="emit('close')">
+      <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="emitClose">
         <!-- Backdrop with shadow effect -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
@@ -72,7 +81,7 @@ watch(() => props.show, (val) => {
           <!-- Header -->
           <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center flex-shrink-0">
             <div>
-              <h3 class="text-lg font-semibold text-white">{{ title }}</h3>
+              <h3 class="text-lg font-semibold text-white">{{ title || '' }}</h3>
               <p v-if="subtitle" class="text-blue-100 text-sm">{{ subtitle }}</p>
             </div>
             <div class="flex items-center gap-1">
@@ -84,7 +93,7 @@ watch(() => props.show, (val) => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
                 </svg>
               </button>
-              <button @click="emit('close')" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              <button @click="emitClose" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>

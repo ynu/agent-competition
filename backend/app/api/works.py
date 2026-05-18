@@ -17,6 +17,8 @@ from app.schemas.work import (
     ReviewCreate, ReviewUpdate, ReviewResponse, VoteRequest
 )
 from app.schemas.common import PageResponse
+from app.services.webhook import trigger_webhook
+from app.models.webhook import WebhookEventType
 import os
 import aiofiles
 
@@ -373,7 +375,19 @@ async def create_work(
 
     add_log(db, current_user.id, "create", "work", work.id, f"提交作品: {work.name}")
 
-    return WorkResponse.model_validate(work)
+    response = WorkResponse.model_validate(work)
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.WORK_CREATED, {
+        "id": work.id,
+        "name": work.name,
+        "description": work.description,
+        "team_id": work.team_id,
+        "theme_id": work.theme_id,
+        "status": work.status.value if hasattr(work.status, 'value') else work.status
+    }, "created")
+
+    return response
 
 
 @router.put("/{work_id}", response_model=WorkResponse)
@@ -415,7 +429,20 @@ async def update_work(
 
     add_log(db, current_user.id, "update", "work", work.id, f"更新作品: {work.name}")
 
-    return WorkResponse.model_validate(work)
+    response = WorkResponse.model_validate(work)
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.WORK_UPDATED, {
+        "id": work.id,
+        "name": work.name,
+        "description": work.description,
+        "team_id": work.team_id,
+        "theme_id": work.theme_id,
+        "status": work.status.value if hasattr(work.status, 'value') else work.status,
+        "updated_fields": list(update_data.keys())
+    }, "updated")
+
+    return response
 
 
 @router.delete("/{work_id}")
@@ -437,6 +464,11 @@ async def delete_work(
         raise HTTPException(status_code=403, detail="权限不足")
 
     work_name = work.name
+    work_data = {
+        "id": work.id,
+        "name": work.name,
+        "team_id": work.team_id
+    }
 
     # 删除文件
     if work.pdf_file and os.path.exists(work.pdf_file):
@@ -448,6 +480,9 @@ async def delete_work(
     db.commit()
 
     add_log(db, current_user.id, "delete", "work", work_id, f"删除作品: {work_name}")
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.WORK_DELETED, work_data, "deleted")
 
     return {"message": "删除成功"}
 
@@ -496,6 +531,14 @@ async def vote_work(
     db.commit()
 
     add_log(db, current_user.id, "vote", "work", work_id, f"投票: {work.name}")
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.VOTE_CREATED, {
+        "id": vote.id,
+        "work_id": work_id,
+        "work_name": work.name,
+        "user_id": current_user.id
+    }, "vote_created")
 
     return {"message": "投票成功", "vote_count": work.vote_count}
 

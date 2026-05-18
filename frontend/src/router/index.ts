@@ -136,6 +136,12 @@ const router = createRouter({
           name: 'admin-logs',
           component: () => import('@/pages/admin/LogsPage.vue'),
           meta: { requiresReviewer: true }
+        },
+        {
+          path: 'webhooks',
+          name: 'admin-webhooks',
+          component: () => import('@/pages/admin/WebhookPage.vue'),
+          meta: { requiresAdmin: true }
         }
       ]
     }

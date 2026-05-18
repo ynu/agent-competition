@@ -13,6 +13,8 @@ from app.schemas.content import (
     ContentCreate, ContentUpdate, ContentResponse, ContentTreeResponse
 )
 from app.schemas.common import PageResponse
+from app.services.webhook import trigger_webhook
+from app.models.webhook import WebhookEventType
 import markdown
 import os
 from jinja2 import Template
@@ -253,7 +255,18 @@ async def create_content(
 
     add_log(db, current_user.id, "create", "content", content.id, f"创建内容: {content.title}")
 
-    return ContentResponse.model_validate(content)
+    response = ContentResponse.model_validate(content)
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.CONTENT_CREATED, {
+        "id": content.id,
+        "title": content.title,
+        "slug": content.slug,
+        "type": content.type.value if hasattr(content.type, 'value') else content.type,
+        "is_published": content.is_published
+    }, "created")
+
+    return response
 
 
 @router.put("/{content_id}", response_model=ContentResponse)
@@ -282,7 +295,19 @@ async def update_content(
 
     add_log(db, current_user.id, "update", "content", content.id, f"更新内容: {content.title}")
 
-    return ContentResponse.model_validate(content)
+    response = ContentResponse.model_validate(content)
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.CONTENT_UPDATED, {
+        "id": content.id,
+        "title": content.title,
+        "slug": content.slug,
+        "type": content.type.value if hasattr(content.type, 'value') else content.type,
+        "is_published": content.is_published,
+        "updated_fields": list(update_data.keys())
+    }, "updated")
+
+    return response
 
 
 @router.delete("/{content_id}")
@@ -296,11 +321,19 @@ async def delete_content(
     if not content:
         raise HTTPException(status_code=404, detail="内容不存在")
 
+    content_data = {
+        "id": content.id,
+        "title": content.title,
+        "slug": content.slug
+    }
     title = content.title
     db.delete(content)
     db.commit()
 
     add_log(db, current_user.id, "delete", "content", content_id, f"删除内容: {title}")
+
+    # 触发 Webhook
+    await trigger_webhook(db, WebhookEventType.CONTENT_DELETED, content_data, "deleted")
 
     return {"message": "删除成功"}
 
