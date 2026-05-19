@@ -51,7 +51,8 @@ from app.api import (
     agent_center_router,
     media_router,
     webhooks_router,
-    messages_router
+    messages_router,
+    event_channels_router
 )
 
 
@@ -118,6 +119,7 @@ app.include_router(agent_center_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
 app.include_router(messages_router, prefix="/api")
+app.include_router(event_channels_router, prefix="/api")
 
 
 @app.get("/")

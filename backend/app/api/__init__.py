@@ -13,6 +13,7 @@ from app.api.agent_center import router as agent_center_router
 from app.api.media import router as media_router
 from app.api.webhooks import router as webhooks_router
 from app.api.messages import router as messages_router
+from app.api.event_channels import router as event_channels_router
 
 __all__ = [
     "auth_router",
@@ -28,5 +29,6 @@ __all__ = [
     "agent_center_router",
     "media_router",
     "webhooks_router",
-    "messages_router"
+    "messages_router",
+    "event_channels_router"
 ]

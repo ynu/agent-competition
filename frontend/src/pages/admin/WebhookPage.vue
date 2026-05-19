@@ -510,11 +510,13 @@ const deliveryDialogTitle = computed(() => `投递记录 - ${currentWebhook.valu
 
     <!-- Delete Confirm -->
     <ConfirmDialog
-      v-model="showConfirm"
+      :show="showConfirm"
       :message="confirmMessage"
       type="danger"
       confirm-text="删除"
       @confirm="confirmCallback?.()"
+      @cancel="showConfirm = false"
+      @close="showConfirm = false"
     />
 
     <!-- Deliveries Dialog -->

@@ -6,6 +6,7 @@ from app.models.content import Content, ContentType, ContentContentType
 from app.models.setting import Setting, Log, CompetitionTheme
 from app.models.webhook import Webhook, WebhookDelivery, WebhookEventType
 from app.models.message import Message
+from app.models.event_channel import EventChannel
 
 __all__ = [
     "User", "UserRole",
@@ -14,5 +15,6 @@ __all__ = [
     "Content", "ContentType", "ContentContentType",
     "Setting", "Log", "CompetitionTheme",
     "Webhook", "WebhookDelivery", "WebhookEventType",
-    "Message"
+    "Message",
+    "EventChannel"
 ]

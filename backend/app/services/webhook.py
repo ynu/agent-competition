@@ -8,6 +8,39 @@ from datetime import datetime, timezone
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 
+
+def trigger_event(db: Session, event: str, data: Any, action: str = None):
+    """
+    统一触发事件函数，同时触发 Webhook 和事件通知渠道
+
+    Args:
+        db: 数据库会话
+        event: 事件类型（如 work.created）
+        data: 事件数据
+        action: 操作类型（created/updated/deleted 等）
+    """
+    # 延迟导入避免循环依赖
+    from app.services.notification_service import trigger_notification
+
+    # 创建异步任务
+    async def _trigger():
+        service = WebhookService(db)
+        await service.trigger_event(event, data, action)
+        await trigger_notification(db, event, data)
+
+    # 在 FastAPI 的同步上下文中运行异步代码
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # 如果已在运行中，创建任务
+            asyncio.create_task(_trigger())
+        else:
+            loop.run_until_complete(_trigger())
+    except RuntimeError:
+        # 没有事件循环，创建新的
+        asyncio.run(_trigger())
+
 from app.models.webhook import Webhook, WebhookDelivery, WebhookEventType
 
 
@@ -225,6 +258,41 @@ class WebhookService:
 
 
 async def trigger_webhook(db: Session, event: str, data: Any, action: str = None):
-    """便捷函数：触发 Webhook 事件"""
+    """便捷函数：仅触发 Webhook 事件（保留向后兼容）"""
     service = WebhookService(db)
     await service.trigger_event(event, data, action)
+
+
+async def trigger_webhook_and_notification(db: Session, event: str, data: Any, action: str = None):
+    """
+    触发 Webhook 和事件通知渠道
+
+    便捷函数：同时触发 Webhook 和所有订阅的事件通知渠道
+    """
+    service = WebhookService(db)
+    await service.trigger_event(event, data, action)
+
+    # 延迟导入避免循环依赖
+    from app.services.notification_service import trigger_notification
+    await trigger_notification(db, event, data)
+
+
+def trigger_event_sync(db: Session, event: str, data: Any, action: str = None):
+    """
+    同步触发事件（Webhook + 通知渠道）
+
+    在 FastAPI 同步上下文中调用，自动处理异步
+    """
+    # 创建异步任务
+    async def _trigger():
+        await trigger_webhook_and_notification(db, event, data, action)
+
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(_trigger())
+        else:
+            loop.run_until_complete(_trigger())
+    except RuntimeError:
+        asyncio.run(_trigger())

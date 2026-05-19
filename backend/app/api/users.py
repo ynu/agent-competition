@@ -11,7 +11,7 @@ from app.models.user import User, UserRole
 from app.models.setting import Log
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.schemas.common import PageResponse
-from app.services.webhook import trigger_webhook
+from app.services.webhook import trigger_webhook_and_notification
 from app.models.webhook import WebhookEventType
 
 router = APIRouter(prefix="/users", tags=["用户管理"])
@@ -111,7 +111,7 @@ async def create_user(
     response = UserResponse.model_validate(user)
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.USER_REGISTERED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.USER_REGISTERED, {
         "id": user.id,
         "username": user.username,
         "email": user.email,

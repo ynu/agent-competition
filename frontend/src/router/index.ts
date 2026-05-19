@@ -144,6 +144,12 @@ const router = createRouter({
           meta: { requiresAdmin: true }
         },
         {
+          path: 'event-channels',
+          name: 'admin-event-channels',
+          component: () => import('@/pages/admin/EventChannelsPage.vue'),
+          meta: { requiresAdmin: true }
+        },
+        {
           path: 'messages',
           name: 'admin-messages',
           component: () => import('@/pages/admin/MessagesPage.vue')

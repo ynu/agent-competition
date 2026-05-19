@@ -12,7 +12,7 @@ from app.models.work import Work, Review, WorkStatus
 from app.models.setting import Log
 from app.schemas.work import ReviewCreate, ReviewUpdate, ReviewResponse, WorkResponse
 from app.schemas.common import PageResponse
-from app.services.webhook import trigger_webhook
+from app.services.webhook import trigger_webhook_and_notification
 from app.models.webhook import WebhookEventType
 
 router = APIRouter(prefix="/reviews", tags=["评审管理"])
@@ -132,7 +132,7 @@ async def create_review(
     )
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.REVIEW_CREATED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.REVIEW_CREATED, {
         "id": review.id,
         "work_id": review.work_id,
         "work_name": work.name,
@@ -191,7 +191,7 @@ async def update_review(
     )
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.REVIEW_UPDATED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.REVIEW_UPDATED, {
         "id": review.id,
         "work_id": review.work_id,
         "work_name": work.name,

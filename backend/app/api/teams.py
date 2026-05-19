@@ -14,7 +14,7 @@ from app.schemas.team import (
     JoinTeamRequest, TeamMemberResponse
 )
 from app.schemas.common import PageResponse
-from app.services.webhook import trigger_webhook
+from app.services.webhook import trigger_webhook_and_notification
 from app.models.webhook import WebhookEventType
 
 router = APIRouter(prefix="/teams", tags=["队伍管理"])
@@ -232,7 +232,7 @@ async def create_team(
     team_response.members = [TeamMemberResponse.model_validate(m) for m in team.members]
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.TEAM_CREATED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.TEAM_CREATED, {
         "id": team.id,
         "name": team.name,
         "description": team.description,
@@ -314,7 +314,7 @@ async def update_team(
     team_response.members = [TeamMemberResponse.model_validate(m) for m in team.members]
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.TEAM_UPDATED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.TEAM_UPDATED, {
         "id": team.id,
         "name": team.name,
         "description": team.description,
@@ -375,7 +375,7 @@ async def delete_team(
     add_log(db, current_user.id, "delete", "team", team_id, f"删除队伍: {team_name}")
 
     # 触发 Webhook（删除后触发，数据已保存）
-    await trigger_webhook(db, WebhookEventType.TEAM_DELETED, team_data, "deleted")
+    await trigger_webhook_and_notification(db, WebhookEventType.TEAM_DELETED, team_data, "deleted")
 
     return {"message": "删除成功"}
 
@@ -425,7 +425,7 @@ async def join_team(
     team_response.members = [TeamMemberResponse.model_validate(m) for m in team.members]
 
     # 触发 Webhook
-    await trigger_webhook(db, WebhookEventType.TEAM_MEMBER_ADDED, {
+    await trigger_webhook_and_notification(db, WebhookEventType.TEAM_MEMBER_ADDED, {
         "team_id": team.id,
         "team_name": team.name,
         "member": {
