@@ -4,6 +4,20 @@ import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import Dialog from '@/components/Dialog.vue'
 import { useNotification } from '@/composables/useNotification'
+import markdownIt from 'markdown-it'
+
+// 创建 markdown 渲染器
+const md = markdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
+// 渲染 markdown 内容
+function renderMarkdown(content: string): string {
+  if (!content) return ''
+  return md.render(content)
+}
 
 const authStore = useAuthStore()
 const { success, error } = useNotification()
@@ -210,17 +224,9 @@ function formatDate(dateStr: string): string {
   })
 }
 
-// Markdown 预览
+// Markdown 预览（发送时的实时预览）
 function updatePreview() {
-  let html = sendForm.value.content
-    .replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
-    .replace(/\n/g, '<br>')
-  contentPreview.value = html
+  contentPreview.value = renderMarkdown(sendForm.value.content)
 }
 
 watch(() => sendForm.value.content, () => {
@@ -361,7 +367,7 @@ onMounted(async () => {
                   {{ formatDate(msg.created_at) }}
                 </span>
               </div>
-              <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ msg.content.replace(/<[^>]*>/g, '') }}</p>
+              <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ msg.content.replace(/[#*`\[\]]/g, '').substring(0, 100) }}</p>
               <p class="text-xs text-gray-400 mt-2">
                 来自: {{ msg.sender_nickname || msg.sender_username }}
               </p>
@@ -414,7 +420,7 @@ onMounted(async () => {
         </div>
         <div>
           <label class="text-sm font-medium text-gray-500">内容</label>
-          <div class="mt-1 text-gray-700 whitespace-pre-wrap prose prose-sm max-w-none" v-html="selectedMessage.content"></div>
+          <div class="mt-1 text-gray-700 prose prose-sm max-w-none" v-html="renderMarkdown(selectedMessage.content)"></div>
         </div>
       </div>
       <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
@@ -634,28 +640,105 @@ onMounted(async () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Markdown content styles */
 .prose {
   color: #374151;
+  line-height: 1.6;
 }
-.prose h1, .prose h2, .prose h3 {
+.prose :deep(h1) {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  color: #111827;
+}
+.prose :deep(h2) {
+  font-size: 1.25rem;
   font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin: 1rem 0 0.5rem;
+  color: #1f2937;
 }
-.prose h1 { font-size: 1.25rem; }
-.prose h2 { font-size: 1.125rem; }
-.prose h3 { font-size: 1rem; }
-.prose p {
+.prose :deep(h3) {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.375rem;
+  color: #374151;
+}
+.prose :deep(p) {
   margin: 0.5rem 0;
 }
-.prose code {
+.prose :deep(ul),
+.prose :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.prose :deep(li) {
+  margin: 0.25rem 0;
+}
+.prose :deep(code) {
   background: #f3f4f6;
-  padding: 0.125rem 0.25rem;
+  padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
+  font-family: ui-monospace, monospace;
 }
-.prose strong {
+.prose :deep(pre) {
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.prose :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.prose :deep(blockquote) {
+  border-left: 4px solid #d1d5db;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: #6b7280;
+  font-style: italic;
+}
+.prose :deep(a) {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.prose :deep(a:hover) {
+  color: #1d4ed8;
+}
+.prose :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1rem 0;
+}
+.prose :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+.prose :deep(th),
+.prose :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.prose :deep(th) {
+  background: #f9fafb;
   font-weight: 600;
+}
+.prose :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+.prose :deep(strong) {
+  font-weight: 600;
+}
+.prose :deep(em) {
+  font-style: italic;
 }
 /* Dropdown animation */
 .dropdown-enter-active,
