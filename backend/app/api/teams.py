@@ -155,7 +155,7 @@ async def create_team(
         raise HTTPException(status_code=400, detail="队伍名已存在")
 
     # 检查用户是否已创建/加入其他队伍（每人只能创建一个队伍）
-    existing_membership = db.query(TeamMember).filter(TeamMember.user_id == current_user.id).first()
+    existing_membership = db.query(TeamMember).filter(TeamMember.user_id == current_user.username).first()
     if existing_membership:
         raise HTTPException(status_code=400, detail="您已加入其他队伍，不能再创建新队伍")
 
@@ -398,7 +398,7 @@ async def join_team(
         raise HTTPException(status_code=400, detail="队伍人数已满")
 
     # 检查用户是否已加入其他队伍
-    existing = db.query(TeamMember).filter(TeamMember.user_id == current_user.id).first()
+    existing = db.query(TeamMember).filter(TeamMember.user_id == current_user.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="您已加入其他队伍")
 
@@ -469,7 +469,7 @@ async def get_my_team(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取我的队伍"""
-    member = db.query(TeamMember).filter(TeamMember.user_id == current_user.id).first()
+    member = db.query(TeamMember).filter(TeamMember.user_id == current_user.username).first()
     if not member:
         raise HTTPException(status_code=404, detail="您还未加入任何队伍")
 

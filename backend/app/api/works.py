@@ -305,7 +305,7 @@ async def create_work(
 
     # 检查用户是否有队伍
     member = db.query(TeamMember).filter(
-        TeamMember.user_id == current_user.id,
+        TeamMember.user_id == current_user.username,
         TeamMember.is_leader == True
     ).first()
 
@@ -598,7 +598,7 @@ async def get_my_works(
 ):
     """获取我的作品"""
     member = db.query(TeamMember).filter(
-        TeamMember.user_id == current_user.id,
+        TeamMember.user_id == current_user.username,
         TeamMember.is_leader == True
     ).first()
 
@@ -634,7 +634,7 @@ async def get_works_for_admin(
     # 权限校验：普通用户只能看自己队伍的作品
     if current_user.role == UserRole.USER:
         user_team_ids = db.query(TeamMember.team_id).filter(
-            TeamMember.user_id == current_user.id
+            TeamMember.user_id == current_user.username
         ).all()
         team_ids = [t[0] for t in user_team_ids]
         if team_ids:
