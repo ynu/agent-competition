@@ -511,7 +511,8 @@ async def vote_work(
     max_votes = get_max_votes(db)
     total_votes = get_user_total_votes(db, current_user.id)
 
-    if max_votes > 0 and total_votes >= max_votes:
+    # 如果 max_votes 是 0，表示不限制投票次数
+    if max_votes != 0 and total_votes >= max_votes:
         raise HTTPException(status_code=400, detail=f"投票次数已用完（最多{max_votes}票）")
 
     # 检查是否已投过
