@@ -20,7 +20,7 @@ class SettingCreate(SettingBase):
 
 # 配置更新 schema
 class SettingUpdate(BaseModel):
-    value: Optional[str] = None
+    value: Optional[str|int] = None
     description: Optional[str] = Field(None, max_length=255)
 
 
