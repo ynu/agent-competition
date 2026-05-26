@@ -38,6 +38,16 @@ def generate_strong_password(length: int = 16) -> str:
             return password
 
 
+def get_frontend_url_from_referer(request: Request) -> str:
+    """从请求头 Referer 中提取前端 base_url"""
+    referer = request.headers.get("referer")
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return None
+
+
 def get_base_url(db: Session) -> str:
     """获取应用基础URL"""
     from app.models.setting import Setting
@@ -160,8 +170,10 @@ async def cas_login(
             detail="统一身份认证未启用"
         )
 
-    # 获取应用基础URL
-    frontend_url = get_base_url(db)
+    # 优先从 Referer 请求头获取前端 URL，否则从配置获取
+    frontend_url = get_frontend_url_from_referer(request)
+    if not frontend_url:
+        frontend_url = get_base_url(db)
     if not service:
         service = f"{frontend_url}/login"
 
@@ -199,8 +211,10 @@ async def cas_callback(
             detail="统一身份认证未启用"
         )
 
-    # 获取应用基础URL
-    frontend_url = get_base_url(db)
+    # 优先从 Referer 请求头获取前端 URL，否则从配置获取
+    frontend_url = get_frontend_url_from_referer(request)
+    if not frontend_url:
+        frontend_url = get_base_url(db)
 
     # 构建回调URL（必须与cas/login中传递的service一致）
     callback_url = f"{frontend_url}/api/auth/cas/callback"
@@ -341,7 +355,10 @@ async def cas_logout(
 ):
     """CAS 登出"""
     cas_config = get_cas_config(db)
-    frontend_url = get_base_url(db)
+    # 优先从 Referer 请求头获取前端 URL，否则从配置获取
+    frontend_url = get_frontend_url_from_referer(request)
+    if not frontend_url:
+        frontend_url = get_base_url(db)
 
     # 跳转到CAS登出
     logout_url = f"{cas_config['cas_logout_url']}?service={frontend_url}"
