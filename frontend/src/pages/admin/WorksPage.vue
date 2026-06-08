@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
+import { workApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import Dialog from '@/components/Dialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import CopyrightAgreementDialog from '@/components/CopyrightAgreementDialog.vue'
 import { useNotification } from '@/composables/useNotification'
 
 const authStore = useAuthStore()
@@ -26,6 +28,7 @@ const showDialog = ref(false)
 const dialogType = ref<'detail' | 'create' | 'edit'>('detail')
 const showPdfModal = ref(false)
 const showVideoModal = ref(false)
+const showCopyrightDialog = ref(false)
 const editingWork = ref<any>(null)
 const formData = ref({
   name: '',
@@ -297,6 +300,56 @@ function openCreate() {
     error('创建失败', '您的队伍尚未通过审核，无法提交作品')
     return
   }
+
+  // 管理员不需要签署协议
+  if (canAudit.value) {
+    editingWork.value = null
+    formData.value = {
+      name: '',
+      description: '',
+      theme_id: null,
+      team_id: userTeam.value?.id || null,
+      agent_url: '',
+      agent_editor_url: '' as any,
+      pdf_file: null,
+      video_file: null,
+      status: 'pending'
+    }
+    dialogType.value = 'create'
+    showDialog.value = true
+    return
+  }
+
+  // 检查是否已签署版权协议
+  workApi.checkCopyrightAgreement().then(res => {
+    if (res.data.has_agreed) {
+      // 已签署，打开创建对话框
+      editingWork.value = null
+      formData.value = {
+        name: '',
+        description: '',
+        theme_id: null,
+        team_id: userTeam.value?.id || null,
+        agent_url: '',
+        agent_editor_url: '' as any,
+        pdf_file: null,
+        video_file: null,
+        status: 'pending'
+      }
+      dialogType.value = 'create'
+      showDialog.value = true
+    } else {
+      // 未签署，显示签署协议对话框
+      showCopyrightDialog.value = true
+    }
+  }).catch(() => {
+    // API错误，默认显示签署对话框
+    showCopyrightDialog.value = true
+  })
+}
+
+function openCreateAfterAgreement() {
+  // 协议签署完成后，打开创建对话框
   editingWork.value = null
   formData.value = {
     name: '',
@@ -1010,5 +1063,12 @@ function handleSearch() {
         </video>
       </div>
     </Dialog>
+
+    <!-- Copyright Agreement Dialog -->
+    <CopyrightAgreementDialog
+      :visible="showCopyrightDialog"
+      @update:visible="showCopyrightDialog = $event"
+      @agreed="openCreateAfterAgreement"
+    />
   </div>
 </template>

@@ -37,6 +37,7 @@ class User(Base):
     logs = relationship("Log", back_populates="user")
     sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
     received_messages = relationship("Message", foreign_keys="Message.receiver_id", back_populates="receiver")
+    copyright_agreements = relationship("CopyrightAgreement", back_populates="user")
 
     def __repr__(self):
         return f"<User {self.username}>"

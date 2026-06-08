@@ -91,7 +91,11 @@ export const workApi = {
   update: (id: number, data: any) => api.put(`/works/${id}`, data),
   delete: (id: number) => api.delete(`/works/${id}`),
   vote: (id: number) => api.post(`/works/${id}/vote`, { work_id: id }),
-  myWorks: (params?: { page?: number; page_size?: number }) => api.get('/works/my/works', { params })
+  myWorks: (params?: { page?: number; page_size?: number }) => api.get('/works/my/works', { params }),
+  // 版权协议
+  checkCopyrightAgreement: () => api.get('/works/copyright-agreement/check'),
+  signCopyrightAgreement: (data: { work_id?: number; signature_data: string; signature_name?: string }) =>
+    api.post('/works/copyright-agreement', data)
 }
 
 // Review APIs

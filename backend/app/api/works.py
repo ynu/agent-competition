@@ -3,7 +3,7 @@
 """
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_optional, require_role
@@ -14,13 +14,34 @@ from app.models.work import Work, Review, Vote, WorkStatus
 from app.models.setting import Log, CompetitionTheme
 from app.schemas.work import (
     WorkCreate, WorkUpdate, WorkResponse, WorkDetailResponse,
-    ReviewCreate, ReviewUpdate, ReviewResponse, VoteRequest
+    ReviewCreate, ReviewUpdate, ReviewResponse, VoteRequest,
+    CopyrightAgreementCreate, CopyrightAgreementResponse
 )
 from app.schemas.common import PageResponse
 from app.services.webhook import trigger_webhook_and_notification
 from app.models.webhook import WebhookEventType
+from app.models.work import CopyrightAgreement
 import os
 import aiofiles
+
+# 默认版权协议内容
+DEFAULT_COPYRIGHT_AGREEMENT = """参赛作品版权声明
+
+我已阅读并理解以下版权协议内容：
+
+1. 参赛作品的著作权归参赛队伍成员共同所有。
+
+2. 参赛作品的版权和最终解释权归学校（云南大学）所有。
+
+3. 学校有权对参赛作品进行修改、使用、宣传、推广等，无需另行通知参赛者或支付额外费用。
+
+4. 参赛者保证参赛作品不侵犯任何第三方的知识产权或其他合法权益。
+
+5. 因参赛作品引发的任何纠纷，由参赛者自行负责，与学校无关。
+
+6. 提交参赛作品即表示本人/本队同意上述全部条款。
+
+我郑重承诺以上内容真实有效，并愿意承担相应的法律责任。"""
 
 router = APIRouter(prefix="/works", tags=["作品管理"])
 
@@ -302,6 +323,17 @@ async def create_work(
     sub_open, sub_msg = check_submission_open(db)
     if not sub_open:
         raise HTTPException(status_code=400, detail=f"作品提交：{sub_msg}")
+
+    # 检查是否已签署版权协议
+    existing_agreement = db.query(CopyrightAgreement).filter(
+        CopyrightAgreement.user_id == current_user.id
+    ).first()
+
+    if not existing_agreement:
+        raise HTTPException(
+            status_code=400,
+            detail="请先签署版权协议才能提交作品"
+        )
 
     # 检查用户是否有队伍
     member = db.query(TeamMember).filter(
@@ -674,3 +706,82 @@ async def get_works_for_admin(
         page_size=page_size,
         items=items
     )
+
+
+@router.get("/copyright-agreement/check")
+async def check_copyright_agreement(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """检查用户是否已签署版权协议"""
+    # 检查是否已有签署记录
+    existing = db.query(CopyrightAgreement).filter(
+        CopyrightAgreement.user_id == current_user.id
+    ).order_by(CopyrightAgreement.created_at.desc()).first()
+
+    return {
+        "has_agreed": existing is not None,
+        "last_signed_at": existing.created_at.isoformat() if existing else None,
+        "agreement_content": DEFAULT_COPYRIGHT_AGREEMENT
+    }
+
+
+@router.post("/copyright-agreement", response_model=CopyrightAgreementResponse)
+async def sign_copyright_agreement(
+    agreement_data: CopyrightAgreementCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """签署版权协议"""
+    # 检查是否已有签署记录
+    existing = db.query(CopyrightAgreement).filter(
+        CopyrightAgreement.user_id == current_user.id
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="您已经签署过版权协议，无需重复签署"
+        )
+
+    # 获取客户端IP和User-Agent
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent", "")[:500] if request.headers else ""
+
+    # 创建签署记录
+    agreement = CopyrightAgreement(
+        user_id=current_user.id,
+        work_id=agreement_data.work_id,
+        signature_data=agreement_data.signature_data,
+        signature_name=agreement_data.signature_name or current_user.nickname or current_user.username,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        agreement_content=DEFAULT_COPYRIGHT_AGREEMENT
+    )
+
+    db.add(agreement)
+    db.commit()
+    db.refresh(agreement)
+
+    add_log(db, current_user.id, "sign_copyright", "copyright_agreement", agreement.id, "签署版权协议")
+
+    return agreement
+
+
+@router.get("/copyright-agreements", response_model=List[CopyrightAgreementResponse])
+async def get_copyright_agreements(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取版权协议签署记录列表（仅管理员）"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
+        raise HTTPException(status_code=403, detail="权限不足")
+
+    query = db.query(CopyrightAgreement).order_by(CopyrightAgreement.created_at.desc())
+    total = query.count()
+    agreements = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return agreements

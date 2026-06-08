@@ -80,3 +80,25 @@ class Vote(Base):
 
     def __repr__(self):
         return f"<Vote user={self.user_id} work={self.work_id}>"
+
+
+class CopyrightAgreement(Base):
+    """版权协议签署表"""
+    __tablename__ = "copyright_agreements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="签署用户ID")
+    work_id = Column(Integer, ForeignKey("works.id", ondelete="CASCADE"), nullable=True, comment="关联作品ID")
+    signature_data = Column(Text, nullable=False, comment="签名数据（Base64编码）")
+    signature_name = Column(String(100), nullable=True, comment="签名人姓名")
+    ip_address = Column(String(50), nullable=True, comment="签署IP地址")
+    user_agent = Column(String(500), nullable=True, comment="浏览器User-Agent")
+    agreement_content = Column(Text, nullable=False, comment="协议内容快照")
+    created_at = Column(DateTime, default=datetime.utcnow, comment="签署时间")
+
+    # 关系
+    user = relationship("User", back_populates="copyright_agreements")
+    work = relationship("Work")
+
+    def __repr__(self):
+        return f"<CopyrightAgreement user={self.user_id} work={self.work_id}>"

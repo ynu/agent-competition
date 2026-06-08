@@ -100,3 +100,23 @@ class ReviewResponse(ReviewBase):
 # 投票请求 schema
 class VoteRequest(BaseModel):
     work_id: int
+
+
+# 版权协议签署 schema
+class CopyrightAgreementCreate(BaseModel):
+    work_id: Optional[int] = None
+    signature_data: str = Field(..., description="签名数据（Base64编码的图片数据）")
+    signature_name: Optional[str] = Field(None, max_length=100, description="签名人姓名")
+
+
+class CopyrightAgreementResponse(BaseModel):
+    id: int
+    user_id: int
+    work_id: Optional[int] = None
+    signature_name: Optional[str] = None
+    ip_address: Optional[str] = None
+    agreement_content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
