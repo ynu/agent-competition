@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 import Dialog from '@/components/Dialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useNotification } from '@/composables/useNotification'
+import MarkdownIt from 'markdown-it'
 
 const { success, error } = useNotification()
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true
+})
 
 const settings = ref<any[]>([])
 const themes = ref<any[]>([])
@@ -31,6 +38,15 @@ const clearingData = ref(false)
 
 const formData = ref<Record<string, string>>({})
 
+// 检查是否为版权协议配置
+const isCopyrightAgreement = (key: string) => key === 'copyright_agreement'
+
+// 渲染 Markdown 内容预览
+const previewCopyrightAgreement = computed(() => {
+  const content = formData.value['copyright_agreement'] || ''
+  return md.render(content)
+})
+
 const settingDescriptions: Record<string, { label: string; desc: string; type: string; placeholder?: string }> = {
   // ========== 基础限制 ==========
   max_votes: { label: 'Max Votes Per User', desc: 'Maximum votes per user (0 = unlimited)', type: 'number', placeholder: '5' },
@@ -53,6 +69,8 @@ const settingDescriptions: Record<string, { label: string; desc: string; type: s
   cas_enabled: { label: 'Enable CAS', desc: 'Enable CAS 2.0 unified authentication (true/false)', type: 'text', placeholder: 'true/false' },
   cas_base_url: { label: 'CAS Server URL', desc: 'CAS server address', type: 'text', placeholder: 'https://ids.ynu.edu.cn/authserver' },
   base_url: { label: 'Application Base URL', desc: 'For CAS callback, must be publicly accessible in production', type: 'text', placeholder: 'https://your-domain.com' },
+  // ========== 版权协议 ==========
+  copyright_agreement: { label: 'Copyright Agreement', desc: 'Copyright agreement content (Markdown format)', type: 'textarea', placeholder: 'Enter Markdown content...' },
 }
 
 onMounted(async () => {
@@ -292,14 +310,20 @@ async function handleClearData() {
             </div>
             <div class="text-sm text-gray-500 mt-1">{{ getSettingInfo(setting.key).desc }}</div>
           </div>
-          <div class="flex-1">
-            <input
-              v-model="formData[setting.key]"
-              :type="getSettingInfo(setting.key).type"
-              :placeholder="getSettingInfo(setting.key).placeholder"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          </div>
+          <!-- 版权协议特殊处理：使用 textarea + 实时预览 -->
+          <template v-if="isCopyrightAgreement(setting.key)">
+            <div class="flex-1 flex flex-col gap-2">
+              <textarea
+                v-model="formData[setting.key]"
+                :placeholder="getSettingInfo(setting.key).placeholder"
+                rows="8"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm resize-y"
+              ></textarea>
+              <div class="text-xs text-gray-500">
+                支持 Markdown 格式，保存后可在协议签署对话框中预览渲染效果
+              </div>
+            </div>
+          </template>
           <button
             @click="handleSave(setting.key)"
             :disabled="saving === setting.key"

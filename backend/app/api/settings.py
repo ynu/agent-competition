@@ -40,6 +40,16 @@ DEFAULT_SETTINGS = {
     "cas_enabled": {"value": "true", "description": "Enable CAS authentication", "sort_order": 60},
     "cas_base_url": {"value": "https://ids.ynu.edu.cn/authserver", "description": "CAS server URL", "sort_order": 61},
     "base_url": {"value": "http://localhost:5173", "description": "Application base URL (for CAS callback)", "sort_order": 62},
+    # ========== 版权协议 ==========
+    "copyright_agreement": {"value": """我已阅读并理解以下版权声明内容：
+
+1. 参赛者保证其提交的参赛作品为原创作品，不侵犯任何第三方的知识产权及其他合法权益。
+2. 参赛者提交作品即视为同意：参赛作品的版权归学校（云南大学）所有，本次大赛相关规则及作品使用事项的最终解释权归学校所有。
+3. 学校有权对参赛作品进行修改、在校内使用、展示、宣传和推广，无需另行通知参赛者或支付额外费用。
+4. 因参赛作品引发的任何知识产权纠纷或其他法律责任，由参赛者自行承担，与学校无关。
+5. 参赛者提交作品即视为已充分知悉并同意上述全部条款。
+
+我郑重承诺以上内容真实有效，并愿意承担相应的法律责任。""", "description": "Copyright agreement content (Markdown format)", "sort_order": 70},
 }
 
 

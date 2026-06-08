@@ -235,6 +235,7 @@ defineExpose({
 
 <template>
   <div class="signature-pad">
+    <!--
     <div class="signature-name-input">
       <label class="text-sm font-medium text-gray-700">签名人姓名</label>
       <input
@@ -244,6 +245,7 @@ defineExpose({
         placeholder="请输入签名人姓名"
       />
     </div>
+    -->
     <div class="canvas-container">
       <canvas
         ref="canvasRef"

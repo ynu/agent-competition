@@ -4,6 +4,7 @@ import { workApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import SignaturePad from './SignaturePad.vue'
 import { ElMessage } from 'element-plus'
+import MarkdownIt from 'markdown-it'
 
 const props = defineProps<{
   visible: boolean
@@ -15,8 +16,15 @@ const emit = defineEmits<{
   (e: 'agreed'): void
 }>()
 
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true
+})
+
 const authStore = useAuthStore()
 const agreementContent = ref('')
+const renderedAgreement = computed(() => md.render(agreementContent.value || ''))
 const loading = ref(false)
 const checking = ref(true)
 const alreadySigned = ref(false)
@@ -127,11 +135,9 @@ async function handleConfirmSign() {
       <!-- 签署协议 -->
       <div v-else class="space-y-4">
         <!-- 协议内容 -->
-        <div class="agreement-content bg-gray-50 rounded-lg p-4 max-h-[180px] overflow-y-auto">
+        <div class="agreement-content bg-gray-50 rounded-lg p-4 max-h-[360px] overflow-y-auto">
           <h4 class="text-base font-medium text-gray-800 mb-3 text-center">参赛作品版权声明</h4>
-          <div class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {{ agreementContent }}
-          </div>
+          <div class="text-sm text-gray-600 markdown-body" v-html="renderedAgreement"></div>
         </div>
 
         <!-- 同意确认 -->
@@ -206,5 +212,51 @@ async function handleConfirmSign() {
 .agreement-content::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
+}
+
+.markdown-body {
+  line-height: 1.8;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body :deep(p) {
+  margin: 0.5em 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  list-style: revert !important;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown-body :deep(li) {
+  margin: 0.25em 0;
+  list-style: revert !important;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 600;
+}
+
+.markdown-body :deep(a) {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1em 0;
 }
 </style>

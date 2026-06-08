@@ -24,25 +24,6 @@ from app.models.work import CopyrightAgreement
 import os
 import aiofiles
 
-# 默认版权协议内容
-DEFAULT_COPYRIGHT_AGREEMENT = """参赛作品版权声明
-
-我已阅读并理解以下版权协议内容：
-
-1. 参赛作品的著作权归参赛队伍成员共同所有。
-
-2. 参赛作品的版权和最终解释权归学校（云南大学）所有。
-
-3. 学校有权对参赛作品进行修改、使用、宣传、推广等，无需另行通知参赛者或支付额外费用。
-
-4. 参赛者保证参赛作品不侵犯任何第三方的知识产权或其他合法权益。
-
-5. 因参赛作品引发的任何纠纷，由参赛者自行负责，与学校无关。
-
-6. 提交参赛作品即表示本人/本队同意上述全部条款。
-
-我郑重承诺以上内容真实有效，并愿意承担相应的法律责任。"""
-
 router = APIRouter(prefix="/works", tags=["作品管理"])
 
 
@@ -60,6 +41,11 @@ def get_setting(db: Session, key: str, default=None):
     from app.models.setting import Setting
     setting = db.query(Setting).filter(Setting.key == key).first()
     return setting.value if setting and setting.value else default
+
+
+def get_copyright_agreement(db: Session) -> str:
+    """获取版权协议内容"""
+    return get_setting(db, "copyright_agreement", "") or ""
 
 
 def get_user_total_votes(db: Session, user_id: int) -> int:
@@ -722,7 +708,7 @@ async def check_copyright_agreement(
     return {
         "has_agreed": existing is not None,
         "last_signed_at": existing.created_at.isoformat() if existing else None,
-        "agreement_content": DEFAULT_COPYRIGHT_AGREEMENT
+        "agreement_content": get_copyright_agreement(db)
     }
 
 
@@ -757,7 +743,7 @@ async def sign_copyright_agreement(
         signature_name=agreement_data.signature_name or current_user.nickname or current_user.username,
         ip_address=client_ip,
         user_agent=user_agent,
-        agreement_content=DEFAULT_COPYRIGHT_AGREEMENT
+        agreement_content=get_copyright_agreement(db)
     )
 
     db.add(agreement)
