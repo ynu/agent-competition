@@ -266,9 +266,11 @@ async def cas_callback(
                 # 验证失败
                 failure = root.find('.//cas:authenticationFailure', ns)
                 if failure is not None:
+                    failure_code = failure.get('code', '')
+                    failure_detail = f"{failure_code}: {failure.text}" if failure_code else failure.text
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail=f"CAS验证失败: {failure.text}"
+                        detail=f"CAS验证失败 [{validate_url}]: {failure_detail}"
                     )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
