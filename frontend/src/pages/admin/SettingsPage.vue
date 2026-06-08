@@ -299,7 +299,7 @@ async function handleClearData() {
       </div>
       <div v-else class="space-y-4">
         <div
-          v-for="setting in settings.filter(s => !s.key.includes('theme') && s.key !== 'themes')"
+          v-for="setting in settings.filter(s => s.key !== 'themes' && !s.key.endsWith('_themes'))"
           :key="setting.id"
           class="flex flex-col md:flex-row md:items-center gap-4 p-4 bg-gray-50 rounded-xl hover:shadow-sm transition-shadow"
         >
@@ -322,6 +322,16 @@ async function handleClearData() {
               <div class="text-xs text-gray-500">
                 支持 Markdown 格式，保存后可在协议签署对话框中预览渲染效果
               </div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="flex-1">
+              <input
+                v-model="formData[setting.key]"
+                :type="getSettingInfo(setting.key).type"
+                :placeholder="getSettingInfo(setting.key).placeholder"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
             </div>
           </template>
           <button
