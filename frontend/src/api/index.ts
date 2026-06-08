@@ -52,7 +52,7 @@ export default api
 export const authApi = {
   login: (data: { username: string; password: string }) => api.post('/auth/login', data),
   unifiedAuth: (data: { code?: string }) => api.post('/auth/unified-auth', data),
-  logout: () => api.post('/auth/logout'),
+  logout: () => api.post<{ message: string; cas_logout_url?: string }>('/auth/logout'),
   me: () => api.get('/auth/me')
 }
 

@@ -150,6 +150,14 @@ async def logout(
         details=f"用户 {current_user.username} 登出",
         ip_address=request.client.host if request.client else None
     )
+
+    # 如果是CAS登录用户，需要调用CAS的logout
+    if current_user.auth_source == "cas":
+        cas_config = get_cas_config(db)
+        frontend_url = get_frontend_url_from_referer(request) or get_base_url(db)
+        cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url, safe='')}"
+        return {"message": "登出成功", "cas_logout_url": cas_logout_url}
+
     return {"message": "登出成功"}
 
 

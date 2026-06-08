@@ -71,10 +71,23 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data
   }
 
-  function logout() {
+  async function logout() {
     token.value = null
     user.value = null
     localStorage.removeItem('token')
+    loading.value = true
+    try {
+      const response = await authApi.logout()
+      // 如果是CAS登录，跳转到CAS logout页面
+      if (response.data.cas_logout_url) {
+        window.location.href = response.data.cas_logout_url
+        return
+      }
+    } catch (e) {
+      console.log('Logout API error:', e)
+    } finally {
+      loading.value = false
+    }
   }
 
   // Initialize on store creation
