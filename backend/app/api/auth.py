@@ -38,12 +38,26 @@ def generate_strong_password(length: int = 16) -> str:
             return password
 
 
-def get_frontend_url_from_referer(request: Request) -> str:
-    """从请求头 Referer 中提取前端 base_url"""
+def get_frontend_url_from_referer(request: Request, db: Session = None) -> str:
+    """从请求头 Referer 中提取前端 base_url
+
+    如果 referer 的 host 与 CAS server 的 host 相同，则返回 None
+    """
     referer = request.headers.get("referer")
     if referer:
         from urllib.parse import urlparse
         parsed = urlparse(referer)
+        referer_host = parsed.netloc
+
+        # 获取 CAS server host
+        if db is not None:
+            cas_config = get_cas_config(db)
+            if cas_config.get("cas_base_url"):
+                cas_parsed = urlparse(cas_config["cas_base_url"])
+                # 如果 referer 来自 CAS server，使用配置中的 base_url
+                if referer_host == cas_parsed.netloc:
+                    return None
+
         return f"{parsed.scheme}://{parsed.netloc}"
     return None
 
@@ -154,7 +168,7 @@ async def logout(
     # 如果是CAS登录用户，需要调用CAS的logout
     if current_user.auth_source == "cas":
         cas_config = get_cas_config(db)
-        frontend_url = get_frontend_url_from_referer(request) or get_base_url(db)
+        frontend_url = get_frontend_url_from_referer(request, db) or get_base_url(db)
         cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url, safe='')}"
         return {"message": "登出成功", "cas_logout_url": cas_logout_url}
 
@@ -179,7 +193,7 @@ async def cas_login(
         )
 
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request)
+    frontend_url = get_frontend_url_from_referer(request, db)
     if not frontend_url:
         frontend_url = get_base_url(db)
     if not service:
@@ -220,7 +234,7 @@ async def cas_callback(
         )
 
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request)
+    frontend_url = get_frontend_url_from_referer(request, db)
     if not frontend_url:
         frontend_url = get_base_url(db)
 
@@ -366,7 +380,7 @@ async def cas_logout(
     """CAS 登出"""
     cas_config = get_cas_config(db)
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request)
+    frontend_url = get_frontend_url_from_referer(request, db)
     if not frontend_url:
         frontend_url = get_base_url(db)
 
