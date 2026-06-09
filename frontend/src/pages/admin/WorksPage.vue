@@ -247,9 +247,14 @@ async function fetchUserTeam() {
 
 const availableThemes = computed(() => {
   if (canAudit.value) return themes.value
-  // 获取当前队伍已使用的主题
+  // 创建模式下，获取当前队伍已使用的主题
   const usedThemeIds = userTeam.value?.used_theme_ids || []
   return themes.value.filter((t: any) => !usedThemeIds.includes(t.id))
+})
+
+// 编辑模式下显示所有主题（包括已使用的）
+const editAvailableThemes = computed(() => {
+  return themes.value
 })
 
 async function fetchWorks() {
@@ -932,12 +937,12 @@ function handleSearch() {
             <label class="block text-sm font-medium text-gray-700 mb-1.5">主题方向 <span class="text-red-500">*</span></label>
             <select
               v-model="formData.theme_id"
-              :disabled="!canAudit && (!userTeam || availableThemes.length === 0)"
+              :disabled="!canAudit && (!userTeam || (dialogType === 'create' ? availableThemes.length === 0 : editAvailableThemes.length === 0))"
               required
               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option :value="null">{{ availableThemes.length === 0 && !canAudit ? '所有主题已使用' : '请选择主题' }}</option>
-              <option v-for="theme in availableThemes" :key="theme.id" :value="theme.id">{{ theme.name }}</option>
+              <option :value="null">{{ dialogType === 'create' && !canAudit && availableThemes.length === 0 ? '所有主题已使用' : '请选择主题' }}</option>
+              <option v-for="theme in (dialogType === 'edit' ? editAvailableThemes : availableThemes)" :key="theme.id" :value="theme.id">{{ theme.name }}</option>
             </select>
           </div>
           <div v-if="(canAudit || hasTeam) && dialogType === 'edit'">
