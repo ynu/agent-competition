@@ -29,6 +29,7 @@ const dialogType = ref<'detail' | 'create' | 'edit'>('detail')
 const showPdfModal = ref(false)
 const showVideoModal = ref(false)
 const showCopyrightDialog = ref(false)
+const copyrightAgreementStatus = ref<{ has_agreed: boolean } | null>(null)
 const editingWork = ref<any>(null)
 const formData = ref({
   name: '',
@@ -58,6 +59,14 @@ const selectedWorks = ref<Set<number>>(new Set())
 const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const hasTeam = computed(() => !!userTeam.value)
 const canAddWork = computed(() => canAudit.value || hasTeam.value)
+// 只有已提交过作品但未签署版权协议的用户才需要签署
+const needsCopyrightAgreement = computed(() => {
+  if (canAudit.value) return false
+  if (copyrightAgreementStatus.value?.has_agreed) return false
+  // 检查是否有已提交的作品
+  const hasWorks = works.value.length > 0
+  return hasWorks
+})
 const selectedCount = computed(() => selectedWorks.value.size)
 const allSelected = computed(() => works.value.length > 0 && selectedWorks.value.size === works.value.length)
 
@@ -208,12 +217,22 @@ const confirmCallback = ref<(() => void) | null>(null)
 onMounted(async () => {
   if (!canAudit.value) {
     await fetchUserTeam()
+    await checkCopyrightAgreementStatus()
   } else {
     await fetchTeams()
   }
   await fetchWorks()
   await fetchThemes()
 })
+
+async function checkCopyrightAgreementStatus() {
+  try {
+    const res = await workApi.checkCopyrightAgreement()
+    copyrightAgreementStatus.value = res.data
+  } catch (e) {
+    copyrightAgreementStatus.value = null
+  }
+}
 
 async function fetchUserTeam() {
   try {
@@ -349,7 +368,10 @@ function openCreate() {
 }
 
 function openCreateAfterAgreement() {
-  // 协议签署完成后，打开创建对话框
+  // 协议签署完成后，打开创建对话框，并更新协议签署状态
+  if (copyrightAgreementStatus.value) {
+    copyrightAgreementStatus.value.has_agreed = true
+  }
   editingWork.value = null
   formData.value = {
     name: '',
@@ -552,6 +574,17 @@ function handleSearch() {
               取消选择
             </button>
           </div>
+          <!-- 版权协议签署按钮 -->
+          <button
+            v-if="needsCopyrightAgreement"
+            @click="showCopyrightDialog = true"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg shadow-amber-500/20 font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            版权协议签署
+          </button>
           <button
             v-if="canAddWork"
             @click="openCreate"
@@ -563,7 +596,7 @@ function handleSearch() {
             添加作品
           </button>
           <div
-            v-else
+            v-else-if="!needsCopyrightAgreement"
             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-400 rounded-xl cursor-not-allowed font-medium"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
