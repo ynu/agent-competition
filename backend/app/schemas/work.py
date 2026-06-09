@@ -53,6 +53,7 @@ class WorkResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     theme_name: Optional[str] = None
+    team_leader_id: Optional[int] = None  # 队长ID，用于前端权限判断
 
     class Config:
         from_attributes = True

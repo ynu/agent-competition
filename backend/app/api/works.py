@@ -420,13 +420,21 @@ async def update_work(
     if not work:
         raise HTTPException(status_code=404, detail="作品不存在")
 
-    # 检查权限
+    # 检查权限 - 队长或管理员可以更新
     team = work.team
-    is_leader = any(m.user_id == current_user.id and m.is_leader for m in team.members)
+    # 队长权限：team.leader_id 存储的是用户的数字 id
+    is_leader = team.leader_id == current_user.id
     is_admin_or_reviewer = current_user.role in [UserRole.ADMIN, UserRole.REVIEWER]
 
+    # 作品提交截止前，队长可以更新自己的作品
+    # 检查作品提交是否还在开放时间内
+    sub_open, _ = check_submission_open(db)
     if not is_leader and not is_admin_or_reviewer:
         raise HTTPException(status_code=403, detail="权限不足")
+
+    # 如果作品提交已截止，只有管理员可以更新
+    if not sub_open and not is_admin_or_reviewer:
+        raise HTTPException(status_code=403, detail="作品提交已截止，只有管理员可以修改")
 
     update_data = work_data.model_dump(exclude_unset=True)
 
@@ -474,12 +482,19 @@ async def delete_work(
     if not work:
         raise HTTPException(status_code=404, detail="作品不存在")
 
-    # 检查权限
+    # 检查权限 - 队长或管理员可以删除
     team = work.team
-    is_leader = any(m.user_id == current_user.id and m.is_leader for m in team.members)
+    is_leader = team.leader_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
 
-    if not is_leader and current_user.role != UserRole.ADMIN:
+    if not is_leader and not is_admin:
         raise HTTPException(status_code=403, detail="权限不足")
+
+    # 作品提交截止前，队长可以删除自己的作品
+    sub_open, _ = check_submission_open(db)
+    # 如果作品提交已截止，只有管理员可以删除
+    if not sub_open and not is_admin:
+        raise HTTPException(status_code=403, detail="作品提交已截止，只有管理员可以删除")
 
     work_name = work.name
     work_data = {
