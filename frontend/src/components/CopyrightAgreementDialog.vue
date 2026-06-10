@@ -8,7 +8,6 @@ import MarkdownIt from 'markdown-it'
 
 const props = defineProps<{
   visible: boolean
-  workId?: number
 }>()
 
 const emit = defineEmits<{
@@ -80,7 +79,6 @@ async function handleConfirmSign() {
   loading.value = true
   try {
     await workApi.signCopyrightAgreement({
-      work_id: props.workId,
       signature_data: signatureData,
       signature_name: signatureName || authStore.user?.nickname || authStore.user?.username || '未知名'
     })

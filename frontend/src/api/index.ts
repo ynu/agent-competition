@@ -95,7 +95,28 @@ export const workApi = {
   // 版权协议
   checkCopyrightAgreement: () => api.get('/works/copyright-agreement/check'),
   signCopyrightAgreement: (data: { work_id?: number; signature_data: string; signature_name?: string }) =>
-    api.post('/works/copyright-agreement', data)
+    api.post('/works/copyright-agreement', data),
+  // 版权协议管理（管理员）
+  listCopyrightAgreements: (params?: {
+    page?: number;
+    page_size?: number;
+    username?: string;
+    team_name?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => api.get('/works/copyright-agreements', { params }),
+  getCopyrightAgreementDetail: (id: number) => api.get(`/works/copyright-agreements/${id}`),
+  exportCopyrightAgreements: (params?: {
+    username?: string;
+    team_name?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    const token = localStorage.getItem('token')
+    return `/api/works/copyright-agreements/export?${new URLSearchParams(params as any).toString()}${
+      token ? `&token=${token}` : ''
+    }`
+  }
 }
 
 // Review APIs

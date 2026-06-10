@@ -105,7 +105,6 @@ class VoteRequest(BaseModel):
 
 # 版权协议签署 schema
 class CopyrightAgreementCreate(BaseModel):
-    work_id: Optional[int] = None
     signature_data: str = Field(..., description="签名数据（Base64编码的图片数据）")
     signature_name: Optional[str] = Field(None, max_length=100, description="签名人姓名")
 
@@ -113,9 +112,25 @@ class CopyrightAgreementCreate(BaseModel):
 class CopyrightAgreementResponse(BaseModel):
     id: int
     user_id: int
-    work_id: Optional[int] = None
     signature_name: Optional[str] = None
     ip_address: Optional[str] = None
+    agreement_content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CopyrightAgreementDetailResponse(BaseModel):
+    """版权协议详情响应（包含关联信息）"""
+    id: int
+    user_id: int
+    username: Optional[str] = None
+    team_name: Optional[str] = None
+    signature_name: Optional[str] = None
+    signature_data: Optional[str] = None  # Base64签名图片
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
     agreement_content: str
     created_at: datetime
 

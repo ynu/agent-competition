@@ -264,7 +264,7 @@ async def get_works(
     )
 
 
-@router.get("/{work_id}", response_model=WorkDetailResponse)
+@router.get("/{work_id:int}", response_model=WorkDetailResponse)
 async def get_work(
     work_id: int,
     db: Session = Depends(get_db),
@@ -753,7 +753,6 @@ async def sign_copyright_agreement(
     # 创建签署记录
     agreement = CopyrightAgreement(
         user_id=current_user.id,
-        work_id=agreement_data.work_id,
         signature_data=agreement_data.signature_data,
         signature_name=agreement_data.signature_name or current_user.nickname or current_user.username,
         ip_address=client_ip,
@@ -770,10 +769,14 @@ async def sign_copyright_agreement(
     return agreement
 
 
-@router.get("/copyright-agreements", response_model=List[CopyrightAgreementResponse])
+@router.get("/copyright-agreements", response_model=PageResponse)
 async def get_copyright_agreements(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    username: Optional[str] = Query(None, description="用户名搜索"),
+    team_name: Optional[str] = Query(None, description="队伍名称搜索"),
+    start_date: Optional[str] = Query(None, description="开始时间 (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="结束时间 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -781,8 +784,181 @@ async def get_copyright_agreements(
     if current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
         raise HTTPException(status_code=403, detail="权限不足")
 
-    query = db.query(CopyrightAgreement).order_by(CopyrightAgreement.created_at.desc())
-    total = query.count()
-    agreements = query.offset((page - 1) * page_size).limit(page_size).all()
+    # 基础查询
+    query = db.query(CopyrightAgreement).join(User, CopyrightAgreement.user_id == User.id)
 
-    return agreements
+    # 搜索条件
+    if username:
+        query = query.filter(User.username.contains(username) | User.nickname.contains(username))
+
+    if team_name:
+        query = query.join(TeamMember, TeamMember.user_id == User.username)
+        query = query.join(Team, Team.id == TeamMember.team_id)
+        query = query.filter(Team.name.contains(team_name))
+
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(CopyrightAgreement.created_at >= start)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            end = end.replace(hour=23, minute=59, second=59)
+            query = query.filter(CopyrightAgreement.created_at <= end)
+        except ValueError:
+            pass
+
+    total = query.count()
+    agreements = query.order_by(CopyrightAgreement.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    items = []
+    for a in agreements:
+        user = db.query(User).filter(User.id == a.user_id).first()
+        team_name_val = None
+        if user:
+            member = db.query(TeamMember).filter(TeamMember.user_id == user.username).first()
+            if member:
+                team = db.query(Team).filter(Team.id == member.team_id).first()
+                if team:
+                    team_name_val = team.name
+
+        items.append({
+            "id": a.id,
+            "user_id": a.user_id,
+            "username": user.nickname if user else str(a.user_id),
+            "team_name": team_name_val,
+            "signature_name": a.signature_name,
+            "signature_data": a.signature_data,
+            "ip_address": a.ip_address,
+            "user_agent": a.user_agent,
+            "agreement_content": a.agreement_content[:100] + "..." if len(a.agreement_content) > 100 else a.agreement_content,
+            "created_at": a.created_at
+        })
+
+    return PageResponse(total=total, page=page, page_size=page_size, items=items)
+
+
+@router.get("/copyright-agreements/{agreement_id}", response_model=dict)
+async def get_copyright_agreement_detail(
+    agreement_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取版权协议签署详情"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
+        raise HTTPException(status_code=403, detail="权限不足")
+
+    agreement = db.query(CopyrightAgreement).filter(CopyrightAgreement.id == agreement_id).first()
+    if not agreement:
+        raise HTTPException(status_code=404, detail="签署记录不存在")
+
+    user = db.query(User).filter(User.id == agreement.user_id).first()
+    team_name_val = None
+    if user:
+        member = db.query(TeamMember).filter(TeamMember.user_id == user.username).first()
+        if member:
+            team = db.query(Team).filter(Team.id == member.team_id).first()
+            if team:
+                team_name_val = team.name
+
+    return {
+        "id": agreement.id,
+        "user_id": agreement.user_id,
+        "username": user.nickname if user else str(agreement.user_id),
+        "team_name": team_name_val,
+        "signature_name": agreement.signature_name,
+        "signature_data": agreement.signature_data,
+        "ip_address": agreement.ip_address,
+        "user_agent": agreement.user_agent,
+        "agreement_content": agreement.agreement_content,
+        "created_at": agreement.created_at.isoformat()
+    }
+
+
+@router.get("/copyright-agreements/export")
+async def export_copyright_agreements(
+    username: Optional[str] = Query(None, description="用户名搜索"),
+    team_name: Optional[str] = Query(None, description="队伍名称搜索"),
+    start_date: Optional[str] = Query(None, description="开始时间 (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="结束时间 (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """导出版权协议签署记录（仅管理员）"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="仅管理员可导出")
+
+    query = db.query(CopyrightAgreement).join(User, CopyrightAgreement.user_id == User.id)
+
+    if username:
+        query = query.filter(User.username.contains(username) | User.nickname.contains(username))
+
+    if team_name:
+        query = query.join(TeamMember, TeamMember.user_id == User.username)
+        query = query.join(Team, Team.id == TeamMember.team_id)
+        query = query.filter(Team.name.contains(team_name))
+
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(CopyrightAgreement.created_at >= start)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            end = end.replace(hour=23, minute=59, second=59)
+            query = query.filter(CopyrightAgreement.created_at <= end)
+        except ValueError:
+            pass
+
+    agreements = query.order_by(CopyrightAgreement.created_at.desc()).all()
+
+    try:
+        from openpyxl import Workbook
+        from io import BytesIO
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "版权协议签署记录"
+
+        headers = ["用户名", "队伍名称", "签名人", "签署时间", "IP地址", "User-Agent"]
+        ws.append(headers)
+
+        for a in agreements:
+            user = db.query(User).filter(User.id == a.user_id).first()
+            team_name_val = None
+            if user:
+                member = db.query(TeamMember).filter(TeamMember.user_id == user.username).first()
+                if member:
+                    team = db.query(Team).filter(Team.id == member.team_id).first()
+                    if team:
+                        team_name_val = team.name
+
+            ws.append([
+                user.nickname if user else str(a.user_id),
+                team_name_val or "-",
+                a.signature_name or "-",
+                a.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                a.ip_address or "-",
+                a.user_agent or "-"
+            ])
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        from fastapi.responses import StreamingResponse
+        import io
+
+        return StreamingResponse(
+            io.BytesIO(output.getvalue()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=copyright_agreements.xlsx"}
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel导出功能需要安装 openpyxl")

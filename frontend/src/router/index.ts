@@ -153,6 +153,12 @@ const router = createRouter({
           path: 'messages',
           name: 'admin-messages',
           component: () => import('@/pages/admin/MessagesPage.vue')
+        },
+        {
+          path: 'copyright-agreements',
+          name: 'admin-copyright-agreements',
+          component: () => import('@/pages/admin/CopyrightAgreementsPage.vue'),
+          meta: { requiresAdmin: true }
         }
       ]
     }
