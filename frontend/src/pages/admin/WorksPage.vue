@@ -677,6 +677,7 @@ function handleSearch() {
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队伍</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">投票</th>
+            <th v-if="authStore.isAdmin" class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">版权协议</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
@@ -709,6 +710,22 @@ function handleSearch() {
                 </svg>
                 {{ work.vote_count }}
               </div>
+            </td>
+            <td v-if="authStore.isAdmin" class="px-4 py-4 text-sm">
+              <span
+                v-if="work.leader_has_copyright_agreement !== undefined"
+                :class="work.leader_has_copyright_agreement ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+              >
+                <svg v-if="work.leader_has_copyright_agreement" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                {{ work.leader_has_copyright_agreement ? '已签署' : '未签署' }}
+              </span>
+              <span v-else class="text-gray-400">-</span>
             </td>
             <td class="px-4 py-4 text-sm">
               <div class="flex items-center gap-2">

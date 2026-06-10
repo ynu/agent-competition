@@ -699,6 +699,14 @@ async def get_works_for_admin(
         item["team_leader_id"] = w.team.leader_id  # 添加队长ID用于前端权限判断
         if w.theme_id and w.theme_obj:
             item["theme_name"] = w.theme_obj.name
+        # 仅管理员查看时，检查队长是否已签署版权协议
+        if current_user.role == UserRole.ADMIN:
+            leader = db.query(User).filter(User.id == w.team.leader_id).first()
+            if leader:
+                has_agreed = db.query(CopyrightAgreement).filter(
+                    CopyrightAgreement.user_id == leader.id
+                ).first() is not None
+                item["leader_has_copyright_agreement"] = has_agreed
         items.append(item)
 
     return PageResponse(
