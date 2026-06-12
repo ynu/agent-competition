@@ -42,6 +42,7 @@ const confirmCallback = ref<(() => void) | null>(null)
 const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const selectedCount = computed(() => selectedTeams.value.size)
 const allSelected = computed(() => teams.value.length > 0 && selectedTeams.value.size === teams.value.length)
+const exportLoading = ref(false)
 
 onMounted(async () => {
   // 获取当前用户信息
@@ -100,7 +101,7 @@ async function fetchTeams() {
     const res = await api.get('/teams', {
       params: {
         page: page.value,
-        page_width: pageSize,
+        page_size: pageSize,
         status: statusFilter.value || undefined,
         keyword: keyword.value || undefined
       }
@@ -352,6 +353,75 @@ function getStatusText(status: string) {
     default: return status
   }
 }
+
+// 导出所有队伍信息
+async function handleExport() {
+  exportLoading.value = true
+  try {
+    // 获取所有队伍
+    const allTeams: any[] = []
+    const pageSize = 100
+    let page = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const res = await api.get('/teams', { params: { page, page_size: pageSize } })
+      const items = res.data.items || []
+      allTeams.push(...items)
+      hasMore = items.length === pageSize
+      page++
+    }
+
+    // 构建 CSV 内容
+    const headers = ['队名', '状态', '队长姓名', '队长学工号', '队员姓名', '队员学工号', '创建时间']
+    const rows: string[][] = []
+
+    for (const team of allTeams) {
+      const members = team.members || []
+
+      // 以队长作为第一行
+      const leader = members.find((m: any) => m.is_leader)
+      rows.push([
+        team.name,
+        getStatusText(team.status),
+        leader?.name || '',
+        leader?.student_id || '',
+        leader?.name || '',
+        leader?.student_id || '',
+        new Date(team.created_at).toLocaleString('zh-CN')
+      ])
+
+      // 其他成员
+      const otherMembers = members.filter((m: any) => !m.is_leader)
+      for (const member of otherMembers) {
+        rows.push(['', '', '', '', member.name, member.student_id, ''])
+      }
+    }
+
+    // 生成 CSV
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    // 创建 blob 并下载
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `队伍信息_${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    success('导出成功')
+  } catch (e: any) {
+    error('导出失败', e.response?.data?.detail)
+  } finally {
+    exportLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -439,6 +509,21 @@ function getStatusText(status: string) {
           class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
         >
           搜索
+        </button>
+        <button
+          v-if="canAudit"
+          @click="handleExport"
+          :disabled="exportLoading"
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-emerald-500/25 transition-all disabled:opacity-50"
+        >
+          <svg v-if="exportLoading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          {{ exportLoading ? '导出中...' : '导出' }}
         </button>
       </div>
     </div>
