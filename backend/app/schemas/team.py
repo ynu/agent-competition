@@ -22,7 +22,7 @@ class TeamMemberCreate(TeamMemberBase):
 class TeamMemberResponse(TeamMemberBase):
     id: int
     team_id: int
-    user_id: Optional[int] = None
+    user_id: Optional[int|str] = None
     is_leader: bool
     created_at: datetime
 

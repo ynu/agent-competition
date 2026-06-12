@@ -42,7 +42,7 @@ class TeamMember(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, comment="队伍ID")
-    user_id = Column(Integer, nullable=True, comment="用户ID（保留字段，可选）")
+    user_id = Column(String(50), nullable=True, comment="用户ID（保留字段，可选）")
     student_id = Column(String(50), nullable=False, comment="学工号")
     name = Column(String(100), nullable=False, comment="姓名")
     is_leader = Column(Boolean, default=False, comment="是否队长")
