@@ -121,12 +121,15 @@ async def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取仪表盘统计数据（用户总数、队伍总数、作品总数、投票总数）"""
+    """获取仪表盘统计数据（用户总数、队伍总数、队员总数、作品总数、投票总数）"""
     # 统计用户总数
     total_users = db.query(func.count(User.id)).scalar() or 0
 
     # 统计队伍总数
     total_teams = db.query(func.count(Team.id)).scalar() or 0
+
+    # 统计队员总数
+    total_members = db.query(func.count(TeamMember.id)).scalar() or 0
 
     # 统计作品总数
     total_works = db.query(func.count(Work.id)).scalar() or 0
@@ -137,6 +140,7 @@ async def get_dashboard_stats(
     return {
         "users": total_users,
         "teams": total_teams,
+        "members": total_members,
         "works": total_works,
         "votes": total_votes
     }
