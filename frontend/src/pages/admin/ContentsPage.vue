@@ -158,7 +158,7 @@ async function fetchContents() {
     const res = await api.get('/contents', {
       params: {
         page: page.value,
-        page_width: pageSize,
+        page_size: pageSize,
         type: typeFilter.value || undefined,
         keyword: keyword.value || undefined,
         is_published: publishedFilter.value === '' ? undefined : publishedFilter.value === 'true'

@@ -263,7 +263,7 @@ async function fetchWorks() {
     const res = await api.get('/works/admin/list', {
       params: {
         page: page.value,
-        page_width: pageSize,
+        page_size: pageSize,
         status: statusFilter.value || undefined,
         keyword: keyword.value || undefined,
         team_name: teamFilter.value || undefined
@@ -280,7 +280,7 @@ async function fetchWorks() {
 
 async function fetchThemes() {
   try {
-    const res = await api.get('/settings/competition-themes', { params: { page_width: 100 } })
+    const res = await api.get('/settings/competition-themes', { params: { page_size: 100 } })
     themes.value = res.data.items?.filter((t: any) => t.is_active) || []
     // 如果有用户队伍，获取已使用的主题
     if (userTeam.value) {
@@ -293,7 +293,7 @@ async function fetchThemes() {
 
 async function fetchTeamUsedThemes() {
   try {
-    const res = await api.get('/works/my/works', { params: { page_width: 100 } })
+    const res = await api.get('/works/my/works', { params: { page_size: 100 } })
     const usedThemeIds = (res.data.items || []).map((w: any) => w.theme_id).filter(Boolean)
     if (userTeam.value) {
       userTeam.value.used_theme_ids = usedThemeIds
@@ -305,7 +305,7 @@ async function fetchTeamUsedThemes() {
 
 async function fetchTeams() {
   try {
-    const res = await api.get('/teams', { params: { status: 'approved', page_width: 100 } })
+    const res = await api.get('/teams', { params: { status: 'approved', page_size: 100 } })
     teams.value = res.data.items || []
   } catch (e) {
     teams.value = []

@@ -80,7 +80,7 @@ onMounted(async () => {
 async function fetchSettings() {
   loading.value = true
   try {
-    const res = await api.get('/settings', { params: { page_width: 100 } })
+    const res = await api.get('/settings', { params: { page_size: 100 } })
     settings.value = res.data.items || []
     settings.value.forEach((s: any) => {
       formData.value[s.key] = s.value || ''
@@ -94,7 +94,7 @@ async function fetchSettings() {
 
 async function fetchThemes() {
   try {
-    const res = await api.get('/settings/competition-themes', { params: { page_width: 100 } })
+    const res = await api.get('/settings/competition-themes', { params: { page_size: 100 } })
     themes.value = res.data.items || []
   } catch (e: any) {
     console.error(e)
@@ -193,7 +193,7 @@ async function handleSortThemes(fromIndex: number, toIndex: number) {
 
 async function viewThemeWorks(theme: any) {
   try {
-    const res = await api.get('/works', { params: { theme_id: theme.id, page_width: 100 } })
+    const res = await api.get('/works', { params: { theme_id: theme.id, page_size: 100 } })
     detailWork.value = { ...theme, works: res.data.items || [] }
     showDetailDialog.value = true
   } catch (e: any) {

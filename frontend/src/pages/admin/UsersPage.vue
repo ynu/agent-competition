@@ -51,7 +51,7 @@ async function fetchUsers() {
     const res = await api.get('/users', {
       params: {
         page: page.value,
-        page_width: pageSize,
+        page_size: pageSize,
         role: roleFilter.value || undefined,
         keyword: keyword.value || undefined
       }

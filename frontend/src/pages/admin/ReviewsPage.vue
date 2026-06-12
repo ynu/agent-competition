@@ -37,7 +37,7 @@ onMounted(() => {
 async function fetchReviews() {
   loading.value = true
   try {
-    const params: any = { page: page.value, page_width: pageSize }
+    const params: any = { page: page.value, page_size: pageSize }
     if (teamName.value) params.team_name = teamName.value
     if (workName.value) params.work_name = workName.value
 
