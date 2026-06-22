@@ -147,7 +147,7 @@ async function handleBatchAudit(status: string) {
 // 校验规则
 const urlPatterns = {
   agent: /^https:\/\/agent\.ynu\.edu\.cn\/product\/llm\/chat\/.+$/,
-  editor: /^https:\/\/agent\.ynu\.edu\.cn\/product\/llm\/personal\/.+\/application\/.+\/arrange(?:\?.*)?$/
+  editor: /^https:\/\/agent\.ynu\.edu\.cn\/product\/llm\/(?:personal|workspace)\/.+\/application\/.+\/.+(?:\?.*)?$/
 }
 
 function validateField(field: string, value: any): string {
@@ -165,7 +165,7 @@ function validateField(field: string, value: any): string {
       return ''
     case 'agent_editor_url':
       if (!value) return '请输入编排URL'
-      if (!urlPatterns.editor.test(value)) return '编排URL格式错误，应为 https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange'
+      if (!urlPatterns.editor.test(value)) return '编排URL格式错误，应为 https://agent.ynu.edu.cn/product/llm/(personal|workspace)/<space_id>/application/<app_id>/...'
       return ''
     case 'pdf_file':
       if (!value) return '请上传PDF文档'
@@ -994,7 +994,7 @@ function handleSearch() {
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">
             编排URL <span class="text-red-500">*</span>
-            <span class="text-gray-400 font-normal text-xs ml-1" title="智能体编排页面的URL，格式：https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange">ⓘ</span>
+            <span class="text-gray-400 font-normal text-xs ml-1" title="智能体编排页面的URL，格式：https://agent.ynu.edu.cn/product/llm/(personal|workspace)/<space_id>/application/<app_id>/...">ⓘ</span>
           </label>
           <input
             v-model="formData.agent_editor_url"
@@ -1002,11 +1002,11 @@ function handleSearch() {
             required
             :class="fieldErrors.agent_editor_url ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''"
             class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            placeholder="https://agent.ynu.edu.cn/product/llm/personal/<space_id>/application/<app_id>/arrange"
+            placeholder="https://agent.ynu.edu.cn/product/llm/(personal|workspace)/<space_id>/application/<app_id>/..."
             @blur="handleBlur('agent_editor_url')"
           />
           <p v-if="fieldErrors.agent_editor_url" class="mt-1 text-xs text-red-500">{{ fieldErrors.agent_editor_url }}</p>
-          <p v-else class="mt-1 text-xs text-gray-400">智能体编排页面URL，如 https://agent.ynu.edu.cn/product/llm/personal/d356fl226fac72o35sfg/application/d4oknpsar5es72sj04gg/arrange</p>
+          <p v-else class="mt-1 text-xs text-gray-400">智能体编排页面URL，如 https://agent.ynu.edu.cn/product/llm/(personal|workspace)/d356fl226fac72o35sfg/application/d4oknpsar5es72sj04gg/arrange</p>
         </div>
         <div v-if="dialogType === 'create' || dialogType === 'edit'">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">
