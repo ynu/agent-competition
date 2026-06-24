@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { workApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
@@ -13,7 +13,8 @@ const works = ref<any[]>([])
 const loading = ref(true)
 const keyword = ref('')
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = ref(50)
+const total = ref(0)
 
 // 投票状态
 const votingStatus = ref<any>({
@@ -27,8 +28,6 @@ const votingStatus = ref<any>({
 
 const headerClasses = ['work-header-cyan', 'work-header-green', 'work-header-blue', 'work-header-orange']
 
-const totalPages = computed(() => Math.ceil(works.value.length / pageSize))
-
 onMounted(async () => {
   await fetchWorks()
   if (authStore.isLoggedIn) {
@@ -39,14 +38,13 @@ onMounted(async () => {
 async function fetchWorks() {
   loading.value = true
   try {
-    const params: any = { page: currentPage.value, page_size: pageSize }
+    const params: any = { page: currentPage.value, page_size: pageSize.value }
     if (keyword.value.trim()) {
       params.keyword = keyword.value.trim()
     }
     const response = await workApi.list(params)
     works.value = response.data?.items || []
-    // 更新总数
-    votingStatus.value.total_works = response.data?.total || 0
+    total.value = response.data?.total || 0
   } catch (e: any) {
     console.error(e)
   } finally {
@@ -104,6 +102,13 @@ function handleSearch() {
 
 function handlePageChange(page: number) {
   currentPage.value = page
+  fetchWorks()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleSizeChange(size: number) {
+  pageSize.value = size
+  currentPage.value = 1
   fetchWorks()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -210,12 +215,14 @@ function getHeaderClass(index: number): string {
       <div class="mt-[54px] flex justify-center">
         <el-pagination
           v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           background
-          layout="prev, pager, next"
-          :page-size="pageSize"
-          :total="votingStatus.total_works"
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
           class="works-pagination"
           @current-change="handlePageChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </div>
