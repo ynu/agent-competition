@@ -285,8 +285,16 @@ function getDescriptionParagraphs() {
 
     <!-- Video Dialog -->
     <el-dialog v-model="videoVisible" title="演示视频" width="780px" class="video-dialog" destroy-on-close>
-      <div class="flex min-h-[360px] items-center justify-center rounded-[8px] bg-[#111827] text-[16px] text-white">
-        当前演示视频地址：{{ work?.video_file }}
+      <div class="flex min-h-[360px] items-center justify-center rounded-[8px] bg-[#111827]">
+        <video
+          v-if="work?.video_file"
+          :src="'/' + work.video_file.replaceAll('\\', '/')"
+          controls
+          class="max-h-[360px] w-full rounded-[8px]"
+        >
+          您的浏览器不支持视频播放
+        </video>
+        <span v-else class="text-[16px] text-white">暂无视频</span>
       </div>
     </el-dialog>
   </section>
