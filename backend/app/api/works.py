@@ -225,9 +225,9 @@ async def get_works(
     """获取作品列表"""
     query = db.query(Work).join(Team).outerjoin(CompetitionTheme, Work.theme_id == CompetitionTheme.id)
 
-    # 普通用户只能查看已通过的作品
-    if not current_user or current_user.role == UserRole.USER:
-        query = query.filter(Work.status == WorkStatus.APPROVED)
+    # # 普通用户只能查看已通过的作品
+    # if not current_user or current_user.role == UserRole.USER:
+    #     query = query.filter(Work.status == WorkStatus.APPROVED)
     # 管理员/审核员可以查看所有作品，不需要额外过滤
 
     if status:
