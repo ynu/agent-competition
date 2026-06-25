@@ -27,10 +27,15 @@ async def get_logs(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REVIEWER))
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取日志列表"""
     query = db.query(Log)
+
+    # 非管理员和评审用户只能查看自己相关的日志
+    if current_user.role not in [UserRole.ADMIN]:
+        # 管理员可以看所有日志，其他用户只能看自己的日志
+        query = query.filter(Log.user_id == current_user.id)
 
     if action:
         query = query.filter(Log.action == action)
@@ -38,7 +43,8 @@ async def get_logs(
     if resource:
         query = query.filter(Log.resource == resource)
 
-    if user_id:
+    # user_id 过滤只有管理员可以使用
+    if user_id and current_user.role == UserRole.ADMIN:
         query = query.filter(Log.user_id == user_id)
 
     if start_date:
@@ -70,20 +76,32 @@ async def get_logs(
 @router.get("/actions")
 async def get_log_actions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REVIEWER))
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取所有操作类型"""
-    actions = db.query(Log.action).distinct().all()
+    query = db.query(Log.action).distinct()
+
+    # 非管理员只能查看自己相关日志的操作类型
+    if current_user.role != UserRole.ADMIN:
+        query = query.filter(Log.user_id == current_user.id)
+
+    actions = query.all()
     return [a[0] for a in actions]
 
 
 @router.get("/resources")
 async def get_log_resources(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REVIEWER))
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取所有资源类型"""
-    resources = db.query(Log.resource).distinct().all()
+    query = db.query(Log.resource).distinct()
+
+    # 非管理员只能查看自己相关日志的资源类型
+    if current_user.role != UserRole.ADMIN:
+        query = query.filter(Log.user_id == current_user.id)
+
+    resources = query.all()
     return [r[0] for r in resources if r[0]]
 
 
