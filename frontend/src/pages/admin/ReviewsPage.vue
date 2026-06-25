@@ -211,6 +211,8 @@ function calculateAverage(reviews: any[]): number {
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">我的评分</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">平均分</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">大众评分</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">最终得分</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
@@ -236,6 +238,43 @@ function calculateAverage(reviews: any[]): number {
             <td class="px-6 py-4 text-sm">
               <span v-if="work.score" class="text-gray-700 font-medium">{{ work.score.toFixed(1) }}</span>
               <span v-else class="text-gray-400">-</span>
+              <div v-if="work.score" class="group relative inline-block ml-1 cursor-help">
+                <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                  计算公式：{{ work.review_count }}位评审的平均分
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <span v-if="work.public_score !== undefined" class="text-gray-700">{{ work.public_score }}</span>
+              <span v-else class="text-gray-400">-</span>
+              <div v-if="work.public_score !== undefined" class="group relative inline-block ml-1 cursor-help">
+                <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                  {{ work.vote_count }} ÷ {{ work.max_vote_count }} × 100 = {{ work.public_score }}
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <span v-if="work.final_score !== null" class="font-bold" :class="getScoreColor(work.final_score)">
+                {{ work.final_score }}
+              </span>
+              <span v-else class="text-gray-400">-</span>
+              <div v-if="work.final_score !== null" class="group relative inline-block ml-1 cursor-help">
+                <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                  {{ work.score?.toFixed(1) }} × 0.8 + {{ work.public_score }} × 0.2 = {{ work.final_score }}
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
             </td>
             <td class="px-6 py-4 text-sm">
               <div class="flex flex-wrap items-center gap-2">

@@ -3,6 +3,7 @@
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user, require_role
@@ -55,6 +56,9 @@ async def get_reviews(
     total = query.count()
     works = query.order_by(Work.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
+    # 计算最大点赞数（用于大众评分计算）
+    max_vote_count = db.query(func.max(Work.vote_count)).scalar() or 1
+
     # 获取每个作品的评审信息
     items = []
     for work in works:
@@ -63,11 +67,27 @@ async def get_reviews(
             Review.user_id == current_user.id
         ).first()
 
+        # 获取该作品的所有评审用于计算平均分
+        all_reviews = db.query(Review).filter(Review.work_id == work.id).all()
+        scored_reviews = [r for r in all_reviews if r.score is not None]
+        avg_score = sum(r.score for r in scored_reviews) / len(scored_reviews) if scored_reviews else None
+
+        # 计算大众评分得分：点赞数 / 最高点赞数 × 100
+        public_score = (work.vote_count / max_vote_count * 100) if max_vote_count > 0 else 0
+
+        # 计算最终得分：平均分×0.8 + 大众评分得分×0.2
+        final_score = (avg_score * 0.8 + public_score * 0.2) if avg_score is not None else None
+
         work_data = WorkResponse.model_validate(work)
         work_data_dict = work_data.model_dump()
         work_data_dict["my_review"] = ReviewResponse.model_validate(review) if review else None
         work_data_dict["team_name"] = work.team.name
         work_data_dict["reviewer_name"] = current_user.nickname or current_user.username
+        work_data_dict["score"] = avg_score
+        work_data_dict["public_score"] = round(public_score, 1)
+        work_data_dict["final_score"] = round(final_score, 1) if final_score is not None else None
+        work_data_dict["max_vote_count"] = max_vote_count
+        work_data_dict["review_count"] = len(all_reviews)
         items.append(work_data_dict)
 
     return PageResponse(
@@ -255,6 +275,9 @@ async def get_all_reviews_by_work(
     total = query.count()
     works = query.order_by(Work.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
+    # 计算最大点赞数（用于大众评分计算）
+    max_vote_count = db.query(func.max(Work.vote_count)).scalar() or 1
+
     items = []
     for work in works:
         # 获取该作品的所有评审
@@ -274,6 +297,12 @@ async def get_all_reviews_by_work(
         scored_reviews = [r for r in reviews if r.score is not None]
         avg_score = sum(r.score for r in scored_reviews) / len(scored_reviews) if scored_reviews else None
 
+        # 计算大众评分得分：点赞数 / 最高点赞数 × 100
+        public_score = (work.vote_count / max_vote_count * 100) if max_vote_count > 0 else 0
+
+        # 计算最终得分：平均分×0.8 + 大众评分得分×0.2
+        final_score = (avg_score * 0.8 + public_score * 0.2) if avg_score is not None else None
+
         items.append({
             "id": work.id,
             "work_id": work.id,
@@ -289,7 +318,10 @@ async def get_all_reviews_by_work(
             "video_file": work.video_file,
             "status": work.status,
             "vote_count": work.vote_count,
+            "max_vote_count": max_vote_count,
             "score": avg_score,
+            "public_score": round(public_score, 1),
+            "final_score": round(final_score, 1) if final_score is not None else None,
             "review_count": len(reviews),
             "reviews": reviewers
         })
