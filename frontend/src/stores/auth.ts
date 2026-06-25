@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi, userApi } from '@/api'
+import api from '@/api'
 
 export interface User {
   id: number
@@ -18,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const token = ref<string | null>(null)
   const loading = ref(false)
+  const permissions = ref<string[]>([])
 
   // Initialize token from localStorage
   const initToken = () => {
@@ -35,6 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = response.data.access_token
       localStorage.setItem('token', response.data.access_token)
       user.value = response.data.user
+      await fetchPermissions()
       return response.data
     } finally {
       loading.value = false
@@ -48,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = response.data.access_token
       localStorage.setItem('token', response.data.access_token)
       user.value = response.data.user
+      await fetchPermissions()
       return response.data
     } finally {
       loading.value = false
@@ -59,9 +63,26 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authApi.me()
       user.value = response.data
+      await fetchPermissions()
     } catch {
       logout()
     }
+  }
+
+  async function fetchPermissions() {
+    if (!token.value) return
+    try {
+      const response = await api.get('/permissions/my-permissions')
+      permissions.value = response.data.permissions || []
+    } catch {
+      permissions.value = []
+    }
+  }
+
+  function hasPermission(permissionCode: string): boolean {
+    // 如果用户是admin，拥有所有权限
+    if (user.value?.role === 'admin') return true
+    return permissions.value.includes(permissionCode)
   }
 
   async function updateUser(data: Partial<User>) {
@@ -100,12 +121,15 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     loading,
+    permissions,
     isLoggedIn,
     isAdmin,
     isReviewer,
     login,
     unifiedAuthLogin,
     fetchUser,
+    fetchPermissions,
+    hasPermission,
     updateUser,
     logout
   }

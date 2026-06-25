@@ -32,6 +32,9 @@ const categories = [
   { code: 'content', name: '内容管理' },
   { code: 'setting', name: '配置管理' },
   { code: 'log', name: '日志管理' },
+  { code: 'message', name: '消息管理' },
+  { code: 'webhook', name: 'Webhook管理' },
+  { code: 'event', name: '事件通知' },
 ]
 
 const permissionsByCategory = computed(() => {

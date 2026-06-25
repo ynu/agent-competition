@@ -57,13 +57,13 @@ class UserRoleUpdate(BaseModel):
 
 def init_permissions(db: Session):
     """初始化权限和角色数据"""
-    # 初始化权限
-    existing_perms = db.query(Permission).count()
-    if existing_perms == 0:
-        for perm_data in get_default_permissions():
+    # 初始化权限 - 检查并添加缺失的权限
+    existing_codes = {p.code for p in db.query(Permission).all()}
+    for perm_data in get_default_permissions():
+        if perm_data["code"] not in existing_codes:
             perm = Permission(**perm_data)
             db.add(perm)
-        db.commit()
+    db.commit()
 
     # 初始化角色
     existing_roles = db.query(Role).count()
@@ -107,6 +107,9 @@ async def get_permission_categories():
         {"code": "content", "name": "内容管理"},
         {"code": "setting", "name": "配置管理"},
         {"code": "log", "name": "日志管理"},
+        {"code": "message", "name": "消息管理"},
+        {"code": "webhook", "name": "Webhook管理"},
+        {"code": "event", "name": "事件通知"},
     ]
     return {"categories": categories}
 

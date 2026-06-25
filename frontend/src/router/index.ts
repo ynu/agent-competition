@@ -2,6 +2,18 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import MainLayout from '@/layouts/MainLayout.vue'
 
+// 扩展路由元数据类型
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+    requiresReviewer?: boolean
+    requiresPermission?: string[]
+    guest?: boolean
+    title?: string
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -90,17 +102,20 @@ const router = createRouter({
         {
           path: 'teams',
           name: 'admin-teams',
-          component: () => import('@/pages/admin/TeamsPage.vue')
+          component: () => import('@/pages/admin/TeamsPage.vue'),
+          meta: { requiresPermission: ['team:read', 'team:create', 'team:update', 'team:delete', 'team:audit'] }
         },
         {
           path: 'teams/:id',
           name: 'admin-team-detail',
-          component: () => import('@/pages/admin/TeamDetailPage.vue')
+          component: () => import('@/pages/admin/TeamDetailPage.vue'),
+          meta: { requiresPermission: ['team:read'] }
         },
         {
           path: 'works',
           name: 'admin-works',
-          component: () => import('@/pages/admin/WorksPage.vue')
+          component: () => import('@/pages/admin/WorksPage.vue'),
+          meta: { requiresPermission: ['work:read', 'work:create', 'work:update', 'work:delete', 'work:audit'] }
         },
         {
           path: 'reviews',
@@ -117,7 +132,8 @@ const router = createRouter({
         {
           path: 'contents',
           name: 'admin-contents',
-          component: () => import('@/pages/admin/ContentsPage.vue')
+          component: () => import('@/pages/admin/ContentsPage.vue'),
+          meta: { requiresPermission: ['content:read', 'content:create', 'content:update', 'content:delete'] }
         },
         {
           path: 'settings',
@@ -135,7 +151,7 @@ const router = createRouter({
           path: 'logs',
           name: 'admin-logs',
           component: () => import('@/pages/admin/LogsPage.vue'),
-          meta: { requiresReviewer: true }
+          meta: { requiresPermission: ['log:read'] }
         },
         {
           path: 'webhooks',
@@ -152,7 +168,8 @@ const router = createRouter({
         {
           path: 'messages',
           name: 'admin-messages',
-          component: () => import('@/pages/admin/MessagesPage.vue')
+          component: () => import('@/pages/admin/MessagesPage.vue'),
+          meta: { requiresPermission: [] }  // 所有登录用户都可以访问消息
         },
         {
           path: 'copyright-agreements',
@@ -191,9 +208,47 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // Check if route requires specific permissions
+  if (to.meta.requiresPermission) {
+    const requiredPerms = to.meta.requiresPermission as string[]
+    // 空权限数组表示所有登录用户都可访问
+    if (requiredPerms.length > 0 && !authStore.isAdmin) {
+      const hasAnyPermission = requiredPerms.some(p => authStore.hasPermission(p))
+      if (!hasAnyPermission) {
+        next({ name: 'unauthorized' })
+        return
+      }
+    }
+  }
+
   // Check if route requires reviewer role
   if (to.meta.requiresReviewer) {
-    if (!authStore.isReviewer) {
+    // Check specific permissions for reviewer routes
+    const routePath = to.path
+    let hasAccess = false
+
+    if (authStore.isReviewer) {
+      hasAccess = true
+    } else if (authStore.isAdmin) {
+      hasAccess = true
+    } else {
+      // Check if user has any of the required permissions for this reviewer route
+      const reviewerRoutePermissions: Record<string, string[]> = {
+        'review': ['review:read', 'review:create', 'review:update'],
+        'vote': ['work:read'],
+        'log': ['log:read', 'log:export']
+      }
+
+      // Find matching route
+      for (const [key, perms] of Object.entries(reviewerRoutePermissions)) {
+        if (routePath.includes(key)) {
+          hasAccess = perms.some(p => authStore.hasPermission(p))
+          break
+        }
+      }
+    }
+
+    if (!hasAccess) {
       next({ name: 'unauthorized' })
       return
     }

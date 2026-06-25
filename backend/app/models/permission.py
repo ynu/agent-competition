@@ -17,6 +17,9 @@ class PermissionCategory(str, enum.Enum):
     CONTENT = "content"    # 内容管理
     SETTING = "setting"    # 配置管理
     LOG = "log"            # 日志管理
+    MESSAGE = "message"    # 消息管理
+    WEBHOOK = "webhook"    # Webhook管理
+    EVENT = "event"        # 事件通知
     SYSTEM = "system"      # 系统管理
 
 
@@ -118,6 +121,23 @@ def get_default_permissions():
         # 日志管理
         {"code": "log:read", "name": "查看日志", "category": "log", "action": "read"},
         {"code": "log:export", "name": "导出日志", "category": "log", "action": "export"},
+
+        # 消息管理
+        {"code": "message:read", "name": "查看消息", "category": "message", "action": "read"},
+        {"code": "message:create", "name": "发送消息", "category": "message", "action": "create"},
+        {"code": "message:delete", "name": "删除消息", "category": "message", "action": "delete"},
+
+        # Webhook管理
+        {"code": "webhook:read", "name": "查看Webhook", "category": "webhook", "action": "read"},
+        {"code": "webhook:create", "name": "创建Webhook", "category": "webhook", "action": "create"},
+        {"code": "webhook:update", "name": "更新Webhook", "category": "webhook", "action": "update"},
+        {"code": "webhook:delete", "name": "删除Webhook", "category": "webhook", "action": "delete"},
+
+        # 事件通知
+        {"code": "event:read", "name": "查看事件通知", "category": "event", "action": "read"},
+        {"code": "event:create", "name": "创建事件通知", "category": "event", "action": "create"},
+        {"code": "event:update", "name": "更新事件通知", "category": "event", "action": "update"},
+        {"code": "event:delete", "name": "删除事件通知", "category": "event", "action": "delete"},
     ]
     return permissions
 

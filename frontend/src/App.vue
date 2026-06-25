@@ -15,24 +15,31 @@ const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const unreadMessageCount = ref(0)
 
 const menuItems = computed(() => [
-  { path: '/admin', name: '仪表盘', icon: 'dashboard', roles: ['user', 'reviewer', 'admin'] },
-  { path: '/admin/users', name: '用户管理', icon: 'users', roles: ['admin'] },
-  { path: '/admin/teams', name: '队伍管理', icon: 'team', roles: ['user', 'reviewer', 'admin'] },
-  { path: '/admin/works', name: '作品管理', icon: 'works', roles: ['user', 'reviewer', 'admin'] },
-  { path: '/admin/reviews', name: '评审管理', icon: 'review', roles: ['reviewer', 'admin'] },
-  { path: '/admin/votes', name: '投票管理', icon: 'votes', roles: ['reviewer', 'admin'] },
-  { path: '/admin/contents', name: '内容管理', icon: 'content', roles: ['reviewer', 'admin'] },
-  { path: '/admin/messages', name: '消息管理', icon: 'message', roles: ['user', 'reviewer', 'admin'] },
-  { path: '/admin/permissions', name: '权限管理', icon: 'permission', roles: ['admin'] },
-  { path: '/admin/settings', name: '配置管理', icon: 'settings', roles: ['admin'] },
-  { path: '/admin/webhooks', name: 'Webhook', icon: 'webhook', roles: ['admin'] },
-  { path: '/admin/event-channels', name: '事件通知', icon: 'notification', roles: ['admin'] },
-  { path: '/admin/logs', name: '日志管理', icon: 'logs', roles: ['reviewer', 'admin'] },
+  { path: '/admin', name: '仪表盘', icon: 'dashboard', permissions: [] },
+  { path: '/admin/users', name: '用户管理', icon: 'users', permissions: ['user:read', 'user:create', 'user:update', 'user:delete'] },
+  { path: '/admin/teams', name: '队伍管理', icon: 'team', permissions: ['team:read', 'team:create', 'team:update', 'team:delete', 'team:audit'] },
+  { path: '/admin/works', name: '作品管理', icon: 'works', permissions: ['work:read', 'work:create', 'work:update', 'work:delete', 'work:audit'] },
+  { path: '/admin/reviews', name: '评审管理', icon: 'review', permissions: ['review:read', 'review:create', 'review:update'] },
+  { path: '/admin/votes', name: '投票管理', icon: 'votes', permissions: ['work:read'] },
+  { path: '/admin/contents', name: '内容管理', icon: 'content', permissions: ['content:read', 'content:create', 'content:update', 'content:delete'] },
+  { path: '/admin/messages', name: '消息管理', icon: 'message', permissions: [] },
+  { path: '/admin/permissions', name: '权限管理', icon: 'permission', permissions: ['user:read'] },
+  { path: '/admin/settings', name: '配置管理', icon: 'settings', permissions: ['setting:read', 'setting:update'] },
+  { path: '/admin/webhooks', name: 'Webhook', icon: 'webhook', permissions: ['setting:read'] },
+  { path: '/admin/event-channels', name: '事件通知', icon: 'notification', permissions: ['setting:read'] },
+  { path: '/admin/logs', name: '日志管理', icon: 'logs', permissions: ['log:read', 'log:export'] },
 ])
 
 const filteredMenuItems = computed(() => {
   if (!authStore.user) return []
-  return menuItems.value.filter(item => item.roles.includes(authStore.user!.role))
+  return menuItems.value.filter(item => {
+    // 管理员拥有所有权限
+    if (authStore.isAdmin) return true
+    // 如果没有定义权限要求（空数组），则允许访问
+    if (item.permissions.length === 0) return true
+    // 检查是否拥有任意一个所需权限
+    return item.permissions.some(perm => authStore.hasPermission(perm))
+  })
 })
 
 const sidebarCollapsed = ref(false)
