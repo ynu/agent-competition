@@ -264,9 +264,11 @@ function getHeaderClass(index: number): string {
   font-weight: 700;
 }
 
+/*
 .work-card {
   min-height: 314px;
 }
+*/
 
 .work-header-cyan {
   background: linear-gradient(105deg, #d8fbff 0%, #bff9ff 52%, #cff8ff 100%);
