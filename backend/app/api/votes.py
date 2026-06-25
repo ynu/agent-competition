@@ -111,8 +111,8 @@ async def get_votes_by_user(
 
     items = []
     for u in users:
-        # 获取该用户最近投的几票
-        recent_votes = db.query(Vote).filter(Vote.user_id == u.id).order_by(Vote.created_at.desc()).limit(3).all()
+        # 获取该用户投票数
+        recent_votes = db.query(Vote).filter(Vote.user_id == u.id).order_by(Vote.created_at.desc()).all()
         vote_details = []
         for v in recent_votes:
             vote_details.append({
@@ -177,7 +177,7 @@ async def get_votes_by_work(
     items = []
     for w in works:
         # 获取该作品最近的投票者
-        recent_voters = db.query(Vote).filter(Vote.work_id == w.id).order_by(Vote.created_at.desc()).limit(5).all()
+        recent_voters = db.query(Vote).filter(Vote.work_id == w.id).order_by(Vote.created_at.desc()).all()
         voter_details = []
         for v in recent_voters:
             voter_details.append({
