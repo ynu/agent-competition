@@ -116,6 +116,18 @@ export const workApi = {
     return `/api/works/copyright-agreements/export?${new URLSearchParams(params as any).toString()}${
       token ? `&token=${token}` : ''
     }`
+  },
+  // 作品导出（管理员）
+  exportWorks: (params?: {
+    status?: string;
+    team_name?: string;
+    keyword?: string;
+    theme_id?: number;
+  }) => {
+    const token = localStorage.getItem('token')
+    return `/api/works/admin/export?${new URLSearchParams(params as any).toString()}${
+      token ? `&token=${token}` : ''
+    }`
   }
 }
 

@@ -542,6 +542,15 @@ function handleSearch() {
   clearSelection()
   fetchWorks()
 }
+
+async function handleExport() {
+  const params: Record<string, string | number> = {}
+  if (statusFilter.value) params.status = statusFilter.value
+  if (keyword.value) params.keyword = keyword.value
+  if (teamFilter.value) params.team_name = teamFilter.value
+  const url = workApi.exportWorks(params)
+  window.open(url, '_blank')
+}
 </script>
 
 <template>
@@ -599,6 +608,16 @@ function handleSearch() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
             添加作品
+          </button>
+          <button
+            v-if="canAudit"
+            @click="handleExport"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg shadow-green-600/20 font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            导出
           </button>
           <div
             v-else-if="!needsCopyrightAgreement"
@@ -675,6 +694,8 @@ function handleSearch() {
             </th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">作品名</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队伍</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队长姓名</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队长学工号</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">投票</th>
             <th v-if="authStore.isAdmin" class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">版权协议</th>
@@ -702,6 +723,8 @@ function handleSearch() {
               </button>
             </td>
             <td class="px-4 py-4 text-sm text-gray-600">{{ work.team_name || '-' }}</td>
+            <td class="px-4 py-4 text-sm text-gray-600">{{ work.leader_name || '-' }}</td>
+            <td class="px-4 py-4 text-sm text-gray-600">{{ work.leader_username || '-' }}</td>
             <td class="px-4 py-4 text-sm text-gray-600">{{ work.theme_name || '-' }}</td>
             <td class="px-4 py-4 text-sm">
               <div class="flex items-center gap-1 text-gray-600">

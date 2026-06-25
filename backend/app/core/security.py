@@ -91,6 +91,28 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
+def get_user_from_token(token: str, db: Session) -> Optional[User]:
+    """从token字符串获取用户"""
+    if not token:
+        return None
+
+    payload = decode_token(token)
+    if payload is None:
+        return None
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return None
+
+    user = db.query(User).filter(User.id == user_id).first()
+    return user
+
+
 async def get_current_active_user_optional(
     request: Request,
     db: Session = Depends(get_db)

@@ -3,10 +3,10 @@
 """
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import get_current_active_user, get_current_active_user_optional, require_role
+from app.core.security import get_current_active_user, get_current_active_user_optional, require_role, get_user_from_token
 from app.core.config import settings
 from app.models.user import User, UserRole
 from app.models.team import Team, TeamMember, TeamStatus
@@ -697,16 +697,21 @@ async def get_works_for_admin(
         item = WorkResponse.model_validate(w).model_dump()
         item["team_name"] = w.team.name
         item["team_leader_id"] = w.team.leader_id  # 添加队长ID用于前端权限判断
-        if w.theme_id and w.theme_obj:
-            item["theme_name"] = w.theme_obj.name
-        # 仅管理员查看时，检查队长是否已签署版权协议
-        if current_user.role == UserRole.ADMIN:
-            leader = db.query(User).filter(User.id == w.team.leader_id).first()
-            if leader:
+        # 添加队长信息
+        leader = db.query(User).filter(User.id == w.team.leader_id).first()
+        if leader:
+            item["leader_name"] = leader.nickname or leader.username
+            item["leader_username"] = leader.username
+            if current_user.role == UserRole.ADMIN:
                 has_agreed = db.query(CopyrightAgreement).filter(
                     CopyrightAgreement.user_id == leader.id
                 ).first() is not None
                 item["leader_has_copyright_agreement"] = has_agreed
+        else:
+            item["leader_name"] = None
+            item["leader_username"] = None
+        if w.theme_id and w.theme_obj:
+            item["theme_name"] = w.theme_obj.name
         items.append(item)
 
     return PageResponse(
@@ -892,10 +897,21 @@ async def export_copyright_agreements(
     team_name: Optional[str] = Query(None, description="队伍名称搜索"),
     start_date: Optional[str] = Query(None, description="开始时间 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束时间 (YYYY-MM-DD)"),
+    request: Request = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
 ):
     """导出版权协议签署记录（仅管理员）"""
+    # 支持从 query token 或 header 认证
+    auth_header = request.headers.get("Authorization") if request else None
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+    else:
+        token = request.query_params.get("token") if request else None
+
+    current_user = get_user_from_token(token, db) if token else None
+    if not current_user:
+        raise HTTPException(status_code=401, detail="无效的认证凭据")
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="仅管理员可导出")
 
@@ -967,6 +983,92 @@ async def export_copyright_agreements(
             io.BytesIO(output.getvalue()),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": "attachment; filename=copyright_agreements.xlsx"}
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel导出功能需要安装 openpyxl")
+
+
+@router.get("/admin/export")
+async def export_works(
+    status: Optional[WorkStatus] = None,
+    team_name: Optional[str] = None,
+    keyword: Optional[str] = None,
+    theme_id: Optional[int] = Query(None, description="主题ID"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """导出台作品列表（仅管理员）"""
+    # 支持从 query token 或 header 认证
+    auth_header = request.headers.get("Authorization") if request else None
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+    else:
+        token = request.query_params.get("token") if request else None
+
+    current_user = get_user_from_token(token, db) if token else None
+    if not current_user:
+        raise HTTPException(status_code=401, detail="无效的认证凭据")
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="仅管理员可导出")
+
+    query = db.query(Work).join(Team).outerjoin(CompetitionTheme, Work.theme_id == CompetitionTheme.id)
+
+    if status:
+        query = query.filter(Work.status == status)
+
+    if team_name:
+        query = query.filter(Team.name.contains(team_name))
+
+    if keyword:
+        query = query.filter(Work.name.contains(keyword))
+
+    if theme_id:
+        query = query.filter(Work.theme_id == theme_id)
+
+    works = query.order_by(Work.created_at.desc()).all()
+
+    try:
+        from openpyxl import Workbook
+        from io import BytesIO
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "作品列表"
+
+        headers = ["作品名称", "队伍", "队长姓名", "队长学工号", "主题", "投票数", "评分", "状态", "创建时间"]
+        ws.append(headers)
+
+        status_map = {"pending": "待审核", "approved": "已通过", "rejected": "已拒绝"}
+
+        for w in works:
+            leader = db.query(User).filter(User.id == w.team.leader_id).first()
+            leader_name = leader.nickname if leader else "-"
+            leader_username = leader.username if leader else "-"
+
+            ws.append([
+                w.name,
+                w.team.name,
+                leader_name,
+                leader_username,
+                w.theme_obj.name if w.theme_obj else "-",
+                w.vote_count,
+                w.score if w.score else "-",
+                status_map.get(w.status.value if hasattr(w.status, 'value') else w.status, w.status),
+                w.created_at.strftime("%Y-%m-%d %H:%M:%S") if w.created_at else "-"
+            ])
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        from fastapi.responses import StreamingResponse
+        import io
+
+        return StreamingResponse(
+            io.BytesIO(output.getvalue()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=works.xlsx"}
         )
     except ImportError:
         raise HTTPException(status_code=500, detail="Excel导出功能需要安装 openpyxl")
