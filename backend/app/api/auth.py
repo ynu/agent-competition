@@ -168,7 +168,7 @@ async def logout(
     # 如果是CAS登录用户，需要调用CAS的logout
     if current_user.auth_source == "cas":
         cas_config = get_cas_config(db)
-        frontend_url = get_frontend_url_from_referer(request, db) or get_base_url(db)
+        frontend_url = get_base_url(db)
         cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url, safe='')}"
         return {"message": "登出成功", "cas_logout_url": cas_logout_url}
 
@@ -193,9 +193,7 @@ async def cas_login(
         )
 
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request, db)
-    if not frontend_url:
-        frontend_url = get_base_url(db)
+    frontend_url = get_base_url(db)
     if not service:
         service = f"{frontend_url}/login"
 
@@ -234,9 +232,7 @@ async def cas_callback(
         )
 
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request, db)
-    if not frontend_url:
-        frontend_url = get_base_url(db)
+    frontend_url = get_base_url(db)
 
     # 构建回调URL（必须与cas/login中传递的service一致）
     callback_url = f"{frontend_url}/api/auth/cas/callback"
@@ -380,9 +376,7 @@ async def cas_logout(
     """CAS 登出"""
     cas_config = get_cas_config(db)
     # 优先从 Referer 请求头获取前端 URL，否则从配置获取
-    frontend_url = get_frontend_url_from_referer(request, db)
-    if not frontend_url:
-        frontend_url = get_base_url(db)
+    frontend_url = get_base_url(db)
 
     # 跳转到CAS登出
     logout_url = f"{cas_config['cas_logout_url']}?service={frontend_url}"
