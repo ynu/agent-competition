@@ -108,6 +108,10 @@ def get_default_permissions():
         {"code": "review:create", "name": "创建评审", "category": "review", "action": "create"},
         {"code": "review:update", "name": "更新评审", "category": "review", "action": "update"},
 
+        # 投票管理
+        {"code": "vote:read", "name": "查看投票", "category": "vote", "action": "read"},
+        {"code": "vote:manage", "name": "管理投票", "category": "vote", "action": "manage"},
+
         # 内容管理
         {"code": "content:read", "name": "查看内容", "category": "content", "action": "read"},
         {"code": "content:create", "name": "创建内容", "category": "content", "action": "create"},

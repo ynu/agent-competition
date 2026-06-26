@@ -20,7 +20,7 @@ const menuItems = computed(() => [
   { path: '/admin/teams', name: '队伍管理', icon: 'team', permissions: ['team:read', 'team:create', 'team:update', 'team:delete', 'team:audit'] },
   { path: '/admin/works', name: '作品管理', icon: 'works', permissions: ['work:read', 'work:create', 'work:update', 'work:delete', 'work:audit'] },
   { path: '/admin/reviews', name: '评审管理', icon: 'review', permissions: ['review:read', 'review:create', 'review:update'] },
-  { path: '/admin/votes', name: '投票管理', icon: 'votes', permissions: ['work:read'] },
+  { path: '/admin/votes', name: '投票管理', icon: 'votes', permissions: ['vote:read', 'vote:manage'] },
   { path: '/admin/contents', name: '内容管理', icon: 'content', permissions: ['content:read', 'content:create', 'content:update', 'content:delete'] },
   { path: '/admin/messages', name: '消息管理', icon: 'message', permissions: [] },
   { path: '/admin/permissions', name: '权限管理', icon: 'permission', permissions: ['user:read'] },

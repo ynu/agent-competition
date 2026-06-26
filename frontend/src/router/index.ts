@@ -121,13 +121,13 @@ const router = createRouter({
           path: 'reviews',
           name: 'admin-reviews',
           component: () => import('@/pages/admin/ReviewsPage.vue'),
-          meta: { requiresReviewer: true }
+          meta: { requiresPermission: ['review:read', 'review:create', 'review:update'] }
         },
         {
           path: 'votes',
           name: 'admin-votes',
           component: () => import('@/pages/admin/VotesPage.vue'),
-          meta: { requiresReviewer: true }
+          meta: { requiresPermission: ['vote:read', 'vote:manage'] }
         },
         {
           path: 'contents',
@@ -221,37 +221,10 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Check if route requires reviewer role
-  if (to.meta.requiresReviewer) {
-    // Check specific permissions for reviewer routes
-    const routePath = to.path
-    let hasAccess = false
-
-    if (authStore.isReviewer) {
-      hasAccess = true
-    } else if (authStore.isAdmin) {
-      hasAccess = true
-    } else {
-      // Check if user has any of the required permissions for this reviewer route
-      const reviewerRoutePermissions: Record<string, string[]> = {
-        'review': ['review:read', 'review:create', 'review:update'],
-        'vote': ['work:read'],
-        'log': ['log:read', 'log:export']
-      }
-
-      // Find matching route
-      for (const [key, perms] of Object.entries(reviewerRoutePermissions)) {
-        if (routePath.includes(key)) {
-          hasAccess = perms.some(p => authStore.hasPermission(p))
-          break
-        }
-      }
-    }
-
-    if (!hasAccess) {
-      next({ name: 'unauthorized' })
-      return
-    }
+  // Check if route requires reviewer role (legacy, now use requiresPermission)
+  if (to.meta.requiresReviewer && !authStore.isReviewer && !authStore.isAdmin) {
+    next({ name: 'unauthorized' })
+    return
   }
 
   // Redirect to dashboard if already logged in and trying to access login
