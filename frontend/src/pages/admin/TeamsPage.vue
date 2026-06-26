@@ -43,6 +43,7 @@ const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const selectedCount = computed(() => selectedTeams.value.size)
 const allSelected = computed(() => teams.value.length > 0 && selectedTeams.value.size === teams.value.length)
 const exportLoading = ref(false)
+const registrationOpen = ref(true)
 
 onMounted(async () => {
   // 获取当前用户信息
@@ -50,7 +51,19 @@ onMounted(async () => {
   await fetchUserTeamStatus()
   await fetchTeams()
   await fetchThemes()
+  await checkRegistrationStatus()
 })
+
+async function checkRegistrationStatus() {
+  // 检查报名是否开放
+  try {
+    const res = await api.get('/settings/registration-status')
+    registrationOpen.value = res.data.is_open !== false
+  } catch (e) {
+    // 默认为开放
+    registrationOpen.value = true
+  }
+}
 
 function toggleSelectAll() {
   if (allSelected.value) {
@@ -467,12 +480,16 @@ async function handleExport() {
         <button
           v-else
           @click="openCreateTeam"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
+          :disabled="!registrationOpen"
+          :class="registrationOpen
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-blue-500/25'
+            : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
           </svg>
-          创建队伍
+          {{ registrationOpen ? '创建队伍' : '报名已截止' }}
         </button>
       </div>
     </div>
@@ -591,16 +608,24 @@ async function handleExport() {
                     详情
                   </button>
                   <button
-                    v-if="teams.some(t => t.id === team.id && t.leader_id === authStore.user?.id)"
+                    v-if="teams.some(t => t.id === team.id && t.leader_id === authStore.user?.id) || canAudit"
                     @click="openEdit(team)"
-                    class="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                    :disabled="!registrationOpen || !canAudit"
+                    :class="(registrationOpen && canAudit)
+                      ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                      : 'text-gray-400 bg-gray-100 cursor-not-allowed'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
                   >
                     编辑
                   </button>
                   <button
                     v-if="teams.some(t => t.id === team.id && t.leader_id === authStore.user?.id) || canAudit"
                     @click="handleDelete(team)"
-                    class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                    :disabled="!registrationOpen || !canAudit"
+                    :class="(registrationOpen && canAudit)
+                      ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                      : 'text-gray-400 bg-gray-100 cursor-not-allowed'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
                   >
                     删除
                   </button>

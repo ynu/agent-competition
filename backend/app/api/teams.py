@@ -251,6 +251,11 @@ async def update_team(
     current_user: User = Depends(get_current_active_user)
 ):
     """更新队伍信息"""
+    # 检查报名是否开放
+    reg_open, reg_msg = check_registration_open(db)
+    if not reg_open:
+        raise HTTPException(status_code=400, detail=f"更新队伍：{reg_msg}")
+
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="队伍不存在")
@@ -333,6 +338,11 @@ async def delete_team(
     current_user: User = Depends(get_current_active_user)
 ):
     """删除队伍"""
+    # 检查报名是否开放
+    reg_open, reg_msg = check_registration_open(db)
+    if not reg_open:
+        raise HTTPException(status_code=400, detail=f"删除队伍：{reg_msg}")
+
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="队伍不存在")
@@ -388,6 +398,11 @@ async def join_team(
     current_user: User = Depends(get_current_active_user)
 ):
     """加入队伍"""
+    # 检查报名是否开放
+    reg_open, reg_msg = check_registration_open(db)
+    if not reg_open:
+        raise HTTPException(status_code=400, detail=f"加入队伍：{reg_msg}")
+
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="队伍不存在")

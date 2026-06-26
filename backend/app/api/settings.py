@@ -205,6 +205,44 @@ async def get_themes(
     return {"themes": theme_names}
 
 
+@router.get("/registration-status")
+async def get_registration_status(
+    db: Session = Depends(get_db)
+):
+    """获取报名状态（公开接口）"""
+    from datetime import datetime
+
+    reg_start_setting = db.query(Setting).filter(Setting.key == "registration_start").first()
+    reg_end_setting = db.query(Setting).filter(Setting.key == "registration_end").first()
+
+    reg_start = reg_start_setting.value if reg_start_setting and reg_start_setting.value else None
+    reg_end = reg_end_setting.value if reg_end_setting and reg_end_setting.value else None
+    now = datetime.utcnow()
+
+    is_open = True
+    message = ""
+
+    if reg_start:
+        try:
+            start_time = datetime.fromisoformat(reg_start.replace('Z', '+00:00'))
+            if now < start_time.replace(tzinfo=None):
+                is_open = False
+                message = f"报名尚未开始，开始时间：{reg_start}"
+        except:
+            pass
+
+    if is_open and reg_end:
+        try:
+            end_time = datetime.fromisoformat(reg_end.replace('Z', '+00:00'))
+            if now > end_time.replace(tzinfo=None):
+                is_open = False
+                message = f"报名已结束，结束时间：{reg_end}"
+        except:
+            pass
+
+    return {"is_open": is_open, "message": message}
+
+
 @router.get("/{key}", response_model=SettingResponse)
 async def get_setting(
     key: str,
