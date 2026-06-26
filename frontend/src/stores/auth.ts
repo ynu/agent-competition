@@ -93,21 +93,45 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
+    // 关键：先获取token，再清除本地状态，但请求时要带上token
+    const currentToken = token.value
+
+    // 立即清除本地状态，防止后续请求带token
     token.value = null
     user.value = null
     localStorage.removeItem('token')
-    loading.value = true
-    try {
-      const response = await authApi.logout()
-      // 如果是CAS登录，跳转到CAS logout页面
-      if (response.data.cas_logout_url) {
-        window.location.href = response.data.cas_logout_url
-        return
+
+    // 如果有token，调用后端登出API（带上token）
+    if (currentToken) {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentToken}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        })
+
+        // 如果返回的是HTML页面（含CAS登出按钮），用 document.write 替换当前页面
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('text/html')) {
+          const html = await response.text()
+          document.open()
+          document.write(html)
+          document.close()
+          return
+        }
+
+        // 如果是纯JSON响应，检查是否有 cas_logout_url
+        const data = await response.json()
+        if (data.cas_logout_url) {
+          window.location.href = data.cas_logout_url
+          return
+        }
+      } catch (e) {
+        console.log('Logout error:', e)
       }
-    } catch (e) {
-      console.log('Logout API error:', e)
-    } finally {
-      loading.value = false
     }
   }
 

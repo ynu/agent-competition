@@ -165,12 +165,71 @@ async def logout(
         ip_address=request.client.host if request.client else None
     )
 
-    # 如果是CAS登录用户，需要调用CAS的logout
+    # 如果是CAS登录用户，需要跳转到CAS的logout页面来清除CAS session
     if current_user.auth_source == "cas":
         cas_config = get_cas_config(db)
         frontend_url = get_base_url(db)
-        cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url, safe='')}"
-        return {"message": "登出成功", "cas_logout_url": cas_logout_url}
+        cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url + '/login', safe='')}"
+
+        # 返回HTML页面，让用户点击链接登出（解决第三方Cookie阻止问题）
+        # 如果直接重定向，CAS的Set-Cookie会被浏览器阻止
+        from fastapi.responses import HTMLResponse
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>正在退出...</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                       display: flex; justify-content: center; align-items: center;
+                       min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+                .container {{ text-align: center; padding: 40px 50px; background: white;
+                            border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                            max-width: 420px; width: 90%; }}
+                .icon {{ width: 60px; height: 60px; margin-bottom: 20px; }}
+                h2 {{ color: #1f2937; margin: 0 0 10px 0; font-size: 24px; }}
+                p {{ color: #6b7280; margin: 0 0 30px 0; font-size: 15px; line-height: 1.5; }}
+                .btn {{ display: block; width: 100%; padding: 14px; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                       color: white; text-decoration: none; border-radius: 10px;
+                       font-weight: 600; font-size: 16px; transition: transform 0.2s, box-shadow 0.2s;
+                       box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); }}
+                .btn:hover {{ transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5); }}
+                .hint {{ margin-top: 20px; font-size: 12px; color: #9ca3af; }}
+                .auto-redirect {{ margin-top: 25px; font-size: 13px; color: #9ca3af; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <h2>退出统一身份认证</h2>
+                <p>您正在退出系统，请点击下方按钮完成统一身份认证(CASTGC)的清除</p>
+                <a href="{cas_logout_url}" class="btn">确认退出 (CAS Logout)</a>
+                <p class="hint">清除统一身份认证的登录状态(TGC)</p>
+            </div>
+            <script>
+                // 点击按钮后自动跳转
+                # document.querySelector('.btn').addEventListener('click', function() {{
+                #     // 2秒后自动跳转到登录页
+                #     setTimeout(function() {{
+                #         window.location.href = "{frontend_url}/login";
+                #     }}, 2000);
+                # }});
+                // 如果5秒后没有点击，自动跳转
+                # setTimeout(function() {{
+                #     window.location.href = "{frontend_url}/login";
+                # }}, 5000);
+            </script>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
 
     return {"message": "登出成功"}
 
