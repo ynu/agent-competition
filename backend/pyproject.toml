@@ -26,6 +26,9 @@ dependencies = [
     "volcengine>=1.0.221",
     "openpyxl>=3.1.5",
     "webauthn>=1.0.0",
+    "pyotp>=2.10.0",
+    "cryptography>=44.0.0",
+    "qrcode[pil]>=8.2",
 ]
 
 [build-system]

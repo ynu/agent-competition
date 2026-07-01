@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/api'
 import { passkeyApi, type PasskeyCredential, type PasskeyConfig } from '@/api/passkey'
+import { otpApi, type OTPSetupResponse } from '@/api/otp'
 import Notification from '@/components/Notification.vue'
 
 const notify = ref<InstanceType<typeof Notification> | null>(null)
@@ -26,6 +27,15 @@ const credentials = ref<PasskeyCredential[]>([])
 const registering = ref(false)
 const passkeyError = ref('')
 const passkeySuccess = ref('')
+
+// 2FA
+const otpConfig = ref<{ enabled: boolean; required_for_roles: string[] }>({ enabled: false, required_for_roles: [] })
+const otpStatus = ref<{ enabled: boolean; verified: boolean }>({ enabled: false, verified: false })
+const showOtpSetupModal = ref(false)
+const otpSetupData = ref<OTPSetupResponse | null>(null)
+const otpVerifyCode = ref('')
+const otpLoading = ref(false)
+const otpError = ref('')
 
 // WebAuthn support
 const webAuthnSupported = !!(navigator.credentials && typeof navigator.credentials.create === 'function' && typeof navigator.credentials.get === 'function')
@@ -86,6 +96,8 @@ onMounted(async () => {
   await loadUserInfo()
   await loadPasskeyConfig()
   await loadCredentials()
+  await loadOtpConfig()
+  await loadOtpStatus()
 })
 
 async function loadUserInfo() {
@@ -210,6 +222,72 @@ async function handleRenameCredential(id: number, currentName: string) {
     await loadCredentials()
   } catch (e: any) {
     passkeyError.value = e.response?.data?.detail || '重命名失败'
+  }
+}
+
+async function loadOtpConfig() {
+  try {
+    const res = await otpApi.getConfig()
+    otpConfig.value = res.data
+  } catch (e) {
+    console.error('Failed to load OTP config:', e)
+  }
+}
+
+async function loadOtpStatus() {
+  try {
+    const res = await otpApi.getStatus()
+    otpStatus.value = res.data
+  } catch (e) {
+    console.error('Failed to load OTP status:', e)
+  }
+}
+
+async function handleOtpSetup() {
+  otpError.value = ''
+  otpLoading.value = true
+  try {
+    const res = await otpApi.setup()
+    otpSetupData.value = res.data
+    showOtpSetupModal.value = true
+  } catch (e: any) {
+    otpError.value = e.response?.data?.detail || '获取 2FA 设置失败'
+  } finally {
+    otpLoading.value = false
+  }
+}
+
+async function handleOtpVerify() {
+  if (!otpVerifyCode.value || otpVerifyCode.value.length !== 6) {
+    otpError.value = '请输入6位验证码'
+    return
+  }
+
+  otpLoading.value = true
+  otpError.value = ''
+  try {
+    await otpApi.verifySetup(otpVerifyCode.value)
+    showOtpSetupModal.value = false
+    await loadOtpStatus()
+    showNotification('success', '2FA 已启用')
+  } catch (e: any) {
+    otpError.value = e.response?.data?.detail || '验证失败'
+  } finally {
+    otpLoading.value = false
+    otpVerifyCode.value = ''
+  }
+}
+
+async function handleOtpDisable() {
+  const code = prompt('请输入当前 authenticator APP 中的验证码以禁用 2FA：')
+  if (!code) return
+
+  try {
+    await otpApi.disable(code)
+    await loadOtpStatus()
+    showNotification('success', '2FA 已禁用')
+  } catch (e: any) {
+    showNotification('error', '禁用失败', e.response?.data?.detail)
   }
 }
 </script>
@@ -400,6 +478,99 @@ async function handleRenameCredential(id: number, currentName: string) {
         <p v-if="!passkeyConfig.enabled" class="text-xs text-gray-500 text-center mt-2">
           通行密钥功能已禁用
         </p>
+      </div>
+
+      <!-- 2FA Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">双因素认证 (2FA)</h2>
+          <span v-if="otpStatus.enabled" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">已启用</span>
+          <span v-else class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">未启用</span>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-4">
+          使用 authenticator APP 生成验证码进行二次验证，提高账户安全性。
+        </p>
+
+        <div v-if="otpError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {{ otpError }}
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            v-if="!otpStatus.enabled && otpConfig.enabled"
+            @click="handleOtpSetup"
+            :disabled="otpLoading"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {{ otpLoading ? '加载中...' : '启用 2FA' }}
+          </button>
+          <button
+            v-if="otpStatus.enabled"
+            @click="handleOtpDisable"
+            class="px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50"
+          >
+            禁用 2FA
+          </button>
+          <span v-if="!otpConfig.enabled" class="text-sm text-gray-400">
+            系统未启用 2FA 功能
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2FA Setup Modal -->
+    <div v-if="showOtpSetupModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">启用双因素认证</h3>
+
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm text-gray-600 mb-2">1. 扫描下方二维码</p>
+            <div class="flex justify-center">
+              <img v-if="otpSetupData?.qr_code_base64"
+                   :src="`data:image/png;base64,${otpSetupData.qr_code_base64}`"
+                   alt="QR Code"
+                   class="w-48 h-48" />
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-600 mb-1">2. 或手动输入密钥：</p>
+            <code class="block bg-gray-100 p-2 rounded text-sm break-all">{{ otpSetupData?.secret }}</code>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">3. 输入 APP 中的验证码：</label>
+            <input
+              v-model="otpVerifyCode"
+              type="text"
+              maxlength="6"
+              placeholder="000000"
+              class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div v-if="otpError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {{ otpError }}
+          </div>
+
+          <div class="flex gap-2 justify-end">
+            <button
+              @click="showOtpSetupModal = false; otpVerifyCode = ''"
+              class="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              @click="handleOtpVerify"
+              :disabled="otpLoading"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {{ otpLoading ? '验证中...' : '验证并启用' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

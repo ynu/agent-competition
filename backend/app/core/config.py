@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     VOLCENGINE_SERVICE: str = "app"
     VOLCENGINE_ACCOUNT_ID: str = "1000000000"
 
+    # 2FA 加密密钥
+    OTP_ENCRYPTION_KEY: str = Field(
+        default="",
+        description="TOTP Secret 加密密钥，32字节 base64 编码"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -93,3 +99,11 @@ def get_db_type() -> str:
     elif url.startswith("postgresql"):
         return "postgresql"
     return "sqlite"
+
+
+def get_otp_encryption_key() -> str:
+    """获取或生成 OTP 加密密钥"""
+    if settings.OTP_ENCRYPTION_KEY:
+        return settings.OTP_ENCRYPTION_KEY
+    # 开发环境使用固定密钥，确保重启后能解密
+    return "dev-otp-encryption-key-do-not-use-in-production"

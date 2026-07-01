@@ -15,6 +15,7 @@ from app.api.webhooks import router as webhooks_router
 from app.api.messages import router as messages_router
 from app.api.event_channels import router as event_channels_router
 from app.api.passkey import router as passkey_router, management_router as passkey_management_router
+from app.api.otp import router as otp_router
 
 __all__ = [
     "auth_router",
@@ -33,5 +34,6 @@ __all__ = [
     "messages_router",
     "event_channels_router",
     "passkey_router",
-    "passkey_management_router"
+    "passkey_management_router",
+    "otp_router"
 ]

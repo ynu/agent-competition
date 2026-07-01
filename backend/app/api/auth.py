@@ -4,7 +4,7 @@
 import secrets
 import string
 import httpx
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.security import OAuth2PasswordRequestForm
@@ -15,14 +15,20 @@ from app.core.security import (
     verify_password, get_password_hash, create_access_token, get_current_user
 )
 from app.core.config import settings
+from app.core.otp import decrypt_otp_secret
 from app.models.user import User, UserRole
 from app.models.setting import Log
 from app.schemas.user import (
     LoginRequest, UnifiedAuthLoginRequest, TokenResponse, UserResponse
 )
+from app.schemas.otp import OTPLoginVerifyRequest
 from urllib.parse import quote
+import pyotp
 
 router = APIRouter(prefix="/auth", tags=["认证"])
+
+# 临时 token 存储（2FA 两步验证用，生产环境应使用 Redis）
+_temp_token_store = {}
 
 
 def generate_strong_password(length: int = 16) -> str:
@@ -86,6 +92,26 @@ def get_cas_config(db: Session) -> dict:
         "cas_login_url": f"{cas_base_url.value if cas_base_url else default_cas_base}/login",
         "cas_logout_url": f"{cas_base_url.value if cas_base_url else default_cas_base}/logout",
     }
+
+
+def create_temp_token(user_id: int) -> str:
+    """创建临时 token（用于 2FA 两步验证）"""
+    temp_token = secrets.token_urlsafe(32)
+    _temp_token_store[temp_token] = {
+        "user_id": user_id,
+        "expire_at": datetime.utcnow() + timedelta(minutes=5)
+    }
+    return temp_token
+
+
+def verify_temp_token(temp_token: str) -> int | None:
+    """验证临时 token，返回 user_id 或 None"""
+    data = _temp_token_store.pop(temp_token, None)
+    if not data:
+        return None
+    if datetime.utcnow() > data["expire_at"]:
+        return None
+    return data["user_id"]
 
 
 def get_turnstile_config(db: Session) -> dict:
@@ -209,6 +235,17 @@ async def login(
             detail="用户已被禁用"
         )
 
+    # 检查是否启用了 2FA
+    if user.otp_enabled and user.otp_verified:
+        # 需要 2FA 验证，返回临时 token
+        temp_token = create_temp_token(user.id)
+        return {
+            "access_token": None,
+            "temp_token": temp_token,
+            "requires_otp": True,
+            "token_type": "bearer"
+        }
+
     # 创建 token - 必须使用字符串
     access_token = create_access_token(data={"sub": str(user.id)})
 
@@ -221,6 +258,8 @@ async def login(
 
     return TokenResponse(
         access_token=access_token,
+        temp_token=None,
+        requires_otp=False,
         user=UserResponse.model_validate(user)
     )
 
@@ -330,6 +369,50 @@ async def logout(
         return HTMLResponse(content=html_content)
 
     return {"message": "登出成功"}
+
+
+@router.post("/otp-login", response_model=TokenResponse)
+async def otp_login(
+    request: Request,
+    login_data: OTPLoginVerifyRequest,
+    db: Session = Depends(get_db)
+):
+    """2FA 登录验证（第二步）"""
+    user_id = verify_temp_token(login_data.temp_token)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="临时令牌无效或已过期")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="用户无效或已禁用")
+
+    # 验证 OTP
+    if not user.otp_secret_encrypted:
+        raise HTTPException(status_code=400, detail="2FA 未配置")
+
+    try:
+        secret = decrypt_otp_secret(user.otp_secret_encrypted)
+        totp = pyotp.TOTP(secret)
+
+        if not totp.verify(login_data.code):
+            raise HTTPException(status_code=400, detail="验证码错误")
+
+        # 创建正式 token
+        access_token = create_access_token(data={"sub": str(user.id)})
+
+        add_log(db, user.id, "login", "auth",
+                details=f"用户 {user.username} 通过 2FA 登录",
+                ip_address=request.client.host if request.client else None)
+
+        return TokenResponse(
+            access_token=access_token,
+            user=UserResponse.model_validate(user)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"验证失败: {str(e)}")
 
 
 # ============== 统一身份认证 (CAS 2.0) ==============

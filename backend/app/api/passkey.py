@@ -316,16 +316,31 @@ async def verify_login(
         passkey.last_used_at = datetime.utcnow()
         db.commit()
 
+        # 检查是否启用了 2FA
+        if user.otp_enabled and user.otp_verified:
+            # 需要 2FA 验证，返回临时 token
+            from app.api.auth import create_temp_token
+            temp_token = create_temp_token(user.id)
+            return {
+                "access_token": None,
+                "temp_token": temp_token,
+                "requires_otp": True,
+                "token_type": "bearer"
+            }
+
         # 创建 token
         access_token = create_access_token(data={"sub": str(user.id)})
 
         add_log(db, user.id, "login", "passkey",
                 details=f"Passkey 登录: {user.username}")
 
-        return TokenResponse(
-            access_token=access_token,
-            user=UserResponse.model_validate(user)
-        )
+        return {
+            "access_token": access_token,
+            "temp_token": None,
+            "requires_otp": False,
+            "token_type": "bearer",
+            "user": UserResponse.model_validate(user)
+        }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"登录验证失败: {str(e)}")
@@ -381,16 +396,31 @@ async def verify_login_discoverable(
         passkey.last_used_at = datetime.utcnow()
         db.commit()
 
+        # 检查是否启用了 2FA
+        if user.otp_enabled and user.otp_verified:
+            # 需要 2FA 验证，返回临时 token
+            from app.api.auth import create_temp_token
+            temp_token = create_temp_token(user.id)
+            return {
+                "access_token": None,
+                "temp_token": temp_token,
+                "requires_otp": True,
+                "token_type": "bearer"
+            }
+
         # 创建 token
         access_token = create_access_token(data={"sub": str(user.id)})
 
         add_log(db, user.id, "login", "passkey",
                 details=f"Passkey 登录（无用户名）: {user.username}")
 
-        return TokenResponse(
-            access_token=access_token,
-            user=UserResponse.model_validate(user)
-        )
+        return {
+            "access_token": access_token,
+            "temp_token": None,
+            "requires_otp": False,
+            "token_type": "bearer",
+            "user": UserResponse.model_validate(user)
+        }
 
     except HTTPException:
         raise

@@ -31,6 +31,11 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
     passkey_required = Column(Boolean, default=False, comment="是否强制要求绑定 Passkey")
 
+    # 2FA OTP 字段
+    otp_secret_encrypted = Column(String(500), nullable=True, comment="加密的 OTP Secret")
+    otp_enabled = Column(Boolean, default=False, comment="是否启用 2FA")
+    otp_verified = Column(Boolean, default=False, comment="是否完成 2FA 绑定验证")
+
     # 关系
     teams_as_leader = relationship("Team", back_populates="leader", foreign_keys="Team.leader_id")
     votes = relationship("Vote", back_populates="user")

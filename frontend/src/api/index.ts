@@ -68,6 +68,11 @@ export const userApi = {
   resetPassword: (id: number, data: { new_password: string }) => api.post(`/users/${id}/reset-password`, data)
 }
 
+// Admin APIs
+export const adminApi = {
+  resetUserOtp: (userId: number) => api.post(`/admin/users/${userId}/reset-otp`)
+}
+
 // Team APIs
 export const teamApi = {
   list: (params?: { page?: number; page_size?: number; status?: string; keyword?: string }) =>

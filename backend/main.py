@@ -54,7 +54,8 @@ from app.api import (
     messages_router,
     event_channels_router,
     passkey_router,
-    passkey_management_router
+    passkey_management_router,
+    otp_router
 )
 
 
@@ -124,6 +125,7 @@ app.include_router(messages_router, prefix="/api")
 app.include_router(event_channels_router, prefix="/api")
 app.include_router(passkey_router, prefix="/api")
 app.include_router(passkey_management_router, prefix="/api")
+app.include_router(otp_router, prefix="/api")
 
 
 @app.get("/")

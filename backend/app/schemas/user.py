@@ -55,6 +55,8 @@ class UnifiedAuthLoginRequest(BaseModel):
 
 # Token 响应 schema
 class TokenResponse(BaseModel):
-    access_token: str
+    access_token: Optional[str] = None
+    temp_token: Optional[str] = None
+    requires_otp: bool = False
     token_type: str = "bearer"
-    user: UserResponse
+    user: Optional[UserResponse] = None

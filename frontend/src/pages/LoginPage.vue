@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api'
 import { passkeyApi } from '@/api/passkey'
+import { otpApi } from '@/api/otp'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,6 +26,12 @@ const turnstileWidgetId = ref<string | null>(null)
 const passkeyEnabled = ref(false)
 const passkeyLoading = ref(false)
 const passkeyError = ref('')
+
+// 2FA 验证状态
+const requiresOtp = ref(false)
+const tempToken = ref('')
+const otpCode = ref('')
+const otpLoading = ref(false)
 
 // 将 base64url 字符串转换为 ArrayBuffer
 function base64urlToBuffer(base64url: string): ArrayBuffer {
@@ -84,6 +91,15 @@ async function handlePasskeyLogin() {
     const verifyRes = await passkeyApi.verifyLoginDiscoverable({
       options: JSON.stringify(credential)
     })
+
+    // 检查是否需要 2FA 验证
+    if (verifyRes.data.requires_otp && verifyRes.data.temp_token) {
+      // 需要 2FA 验证
+      requiresOtp.value = true
+      tempToken.value = verifyRes.data.temp_token
+      passkeyLoading.value = false
+      return
+    }
 
     // 保存 token 并跳转
     localStorage.setItem('token', verifyRes.data.access_token)
@@ -204,9 +220,20 @@ async function handleLogin() {
   loading.value = true
 
   try {
-    await authStore.login(username.value, password.value, turnstileToken.value)
-    const redirect = route.query.redirect as string || '/admin'
-    router.push(redirect)
+    const res = await authApi.login({ username: username.value, password: password.value, turnstile_token: turnstileToken.value || undefined })
+
+    if (res.data.requires_otp && res.data.temp_token) {
+      // 需要 2FA 验证
+      requiresOtp.value = true
+      tempToken.value = res.data.temp_token
+      loading.value = false
+    } else {
+      // 直接登录成功
+      localStorage.setItem('token', res.data.access_token)
+      await authStore.fetchUser()
+      const redirect = route.query.redirect as string || '/admin'
+      router.push(redirect)
+    }
   } catch (e: any) {
     error.value = e.response?.data?.detail || '登录失败'
     // Reset turnstile on error
@@ -221,6 +248,53 @@ async function handleLogin() {
 function handleCasLogin() {
   // Redirect to CAS login (backend will handle service URL)
   window.location.href = '/api/auth/cas/login'
+}
+
+async function handleOtpVerify() {
+  if (!otpCode.value || otpCode.value.length !== 6) {
+    error.value = '请输入6位验证码'
+    return
+  }
+
+  const code = otpCode.value  // Save code before clearing
+  otpLoading.value = true
+  error.value = ''
+
+  try {
+    const res = await otpApi.verifyLogin(tempToken.value, code)
+    console.log('OTP verify response:', res)
+
+    // Success - update everything and redirect
+    const accessToken = res.data.access_token
+    if (!accessToken) {
+      throw new Error('No access token')
+    }
+
+    // Update auth state
+    localStorage.setItem('token', accessToken)
+
+    // Use store methods to update state properly
+    authStore.$patch({
+      token: accessToken,
+      user: res.data.user
+    })
+
+    // Clear 2FA state and input
+    requiresOtp.value = false
+    otpCode.value = ''
+    tempToken.value = ''
+
+    // Redirect immediately
+    const redirect = route.query.redirect as string || '/admin'
+    console.log('Redirecting to:', redirect)
+    router.push(redirect)
+  } catch (e: any) {
+    console.error('OTP verify error:', e)
+    error.value = e.response?.data?.detail || e.message || '验证失败'
+    otpCode.value = ''  // Only clear on error
+  } finally {
+    otpLoading.value = false
+  }
 }
 </script>
 
@@ -367,9 +441,48 @@ function handleCasLogin() {
             <div id="turnstile-container"></div>
           </div>
 
+          <!-- 2FA 验证码输入 (两步验证) -->
+          <div v-if="requiresOtp" class="space-y-4">
+            <div class="text-center py-4">
+              <div class="w-12 h-12 mx-auto mb-3 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <p class="text-gray-600 mb-4">请输入 authenticator APP 中的验证码</p>
+              <input
+                v-model="otpCode"
+                type="text"
+                maxlength="6"
+                placeholder="000000"
+                class="w-32 text-center text-2xl tracking-widest px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                @keyup.enter="handleOtpVerify"
+              />
+            </div>
+
+            <button
+              @click="handleOtpVerify"
+              :disabled="otpLoading"
+              class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <svg v-if="otpLoading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              {{ otpLoading ? '验证中...' : '验证并登录' }}
+            </button>
+
+            <button
+              @click="requiresOtp = false; otpCode = ''; tempToken = ''"
+              class="w-full py-2 text-gray-600 hover:text-gray-800 text-sm"
+            >
+              返回重新登录
+            </button>
+          </div>
+
           <!-- Submit Button (password login) -->
           <button
-            v-if="showBothTabs && showPasswordTab"
+            v-if="showBothTabs && showPasswordTab && !requiresOtp"
             type="submit"
             :disabled="loading"
             class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

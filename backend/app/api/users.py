@@ -287,3 +287,32 @@ async def set_force_passkey(
             f"设置用户 {user.username} 强制 Passkey: {data.passkey_required}")
 
     return {"message": f"已设置用户 {user.username} 强制 Passkey: {data.passkey_required}"}
+
+
+# ============== 2FA 管理 ==============
+
+@router.post("/{user_id}/reset-otp")
+async def admin_reset_user_otp(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """管理员重置用户 2FA"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 重置 2FA
+    user.otp_enabled = False
+    user.otp_verified = False
+    user.otp_secret_encrypted = None
+    db.commit()
+
+    # 记录日志
+    add_log(
+        db, current_user.id, "admin_reset_otp", "user",
+        resource_id=user_id,
+        details=f"管理员 {current_user.username} 重置用户 {user.username} 的 2FA"
+    )
+
+    return {"message": "用户 2FA 已重置"}
