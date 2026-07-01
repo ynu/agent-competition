@@ -213,3 +213,5 @@ export const mediaApi = {
   moveFile: (data: { from_path: string; to_path: string }) => api.post('/media/move', data),
   getPreviewUrl: (path: string) => `/media/${path}`
 }
+
+export { passkeyApi } from './passkey'

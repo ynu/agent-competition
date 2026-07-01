@@ -52,7 +52,9 @@ from app.api import (
     media_router,
     webhooks_router,
     messages_router,
-    event_channels_router
+    event_channels_router,
+    passkey_router,
+    passkey_management_router
 )
 
 
@@ -120,6 +122,8 @@ app.include_router(media_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
 app.include_router(messages_router, prefix="/api")
 app.include_router(event_channels_router, prefix="/api")
+app.include_router(passkey_router, prefix="/api")
+app.include_router(passkey_management_router, prefix="/api")
 
 
 @app.get("/")

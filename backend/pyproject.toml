@@ -25,6 +25,7 @@ dependencies = [
     "httpx>=0.28.1",
     "volcengine>=1.0.221",
     "openpyxl>=3.1.5",
+    "webauthn>=1.0.0",
 ]
 
 [build-system]

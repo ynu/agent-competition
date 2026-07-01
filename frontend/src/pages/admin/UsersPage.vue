@@ -12,6 +12,7 @@ const total = ref(0)
 const pageSize = 20
 const roleFilter = ref('')
 const keyword = ref('')
+const passkeyLoading = ref<Record<number, boolean>>({})
 
 const showDialog = ref(false)
 const dialogType = ref<'create' | 'edit' | 'reset'>('create')
@@ -41,8 +42,52 @@ function showNotification(type: 'success' | 'error' | 'warning' | 'info', title:
   }
 }
 
-onMounted(() => {
-  fetchUsers()
+// Passkey related functions
+async function loadUserPasskeyInfo() {
+  for (const user of users.value) {
+    try {
+      const res = await api.get(`/users/${user.id}/passkey-credentials`)
+      user.passkeyCount = res.data.credentials?.length || 0
+      user.passkeyRequired = res.data.passkey_required || false
+    } catch {
+      user.passkeyCount = 0
+      user.passkeyRequired = false
+    }
+  }
+}
+
+async function handleResetPasskey(user: any) {
+  confirmMessage.value = `确定要重置用户 "${user.username}" 的所有 Passkey 吗？`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    try {
+      await api.post(`/users/${user.id}/reset-passkey`)
+      showNotification('success', 'Passkey 已重置')
+      await loadUserPasskeyInfo()
+    } catch (e: any) {
+      showNotification('error', '重置失败', e.response?.data?.detail || '重置失败')
+    }
+  }
+}
+
+async function handleForcePasskey(user: any) {
+  const action = user.passkeyRequired ? '取消强制' : '强制'
+  confirmMessage.value = `确定要${action}用户 "${user.username}" 使用 Passkey 吗？`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    try {
+      await api.put(`/users/${user.id}/force-passkey`, { passkey_required: !user.passkeyRequired })
+      showNotification('success', `已${action} Passkey`)
+      await loadUserPasskeyInfo()
+    } catch (e: any) {
+      showNotification('error', '操作失败', e.response?.data?.detail || '操作失败')
+    }
+  }
+}
+
+onMounted(async () => {
+  await fetchUsers()
+  await loadUserPasskeyInfo()
 })
 
 async function fetchUsers() {
@@ -213,6 +258,7 @@ function handleSearch() {
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">邮箱</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">角色</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Passkey</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
@@ -253,10 +299,28 @@ function handleSearch() {
               </span>
             </td>
             <td class="px-6 py-4 text-sm">
+              <span
+                v-if="user.passkeyCount > 0"
+                class="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+                {{ user.passkeyCount }} 个
+              </span>
+              <span v-else class="text-gray-400 text-xs">无</span>
+            </td>
+            <td class="px-6 py-4 text-sm">
               <div class="flex items-center gap-2">
                 <button @click="openDialog('edit', user)" class="text-blue-600 hover:text-blue-700 font-medium transition-colors">编辑</button>
                 <span class="text-gray-300">|</span>
                 <button @click="openDialog('reset', user)" class="text-amber-600 hover:text-amber-700 font-medium transition-colors">重置密码</button>
+                <span class="text-gray-300">|</span>
+                <button @click="handleResetPasskey(user)" class="text-green-600 hover:text-green-700 font-medium transition-colors">重置Passkey</button>
+                <span class="text-gray-300">|</span>
+                <button @click="handleForcePasskey(user)" class="text-purple-600 hover:text-purple-700 font-medium transition-colors">
+                  {{ user.passkeyRequired ? '取消强制' : '强制Passkey' }}
+                </button>
                 <span class="text-gray-300">|</span>
                 <button @click="handleDelete(user)" class="text-red-600 hover:text-red-700 font-medium transition-colors">删除</button>
               </div>

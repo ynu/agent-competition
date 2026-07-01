@@ -7,6 +7,7 @@ from app.models.setting import Setting, Log, CompetitionTheme
 from app.models.webhook import Webhook, WebhookDelivery, WebhookEventType
 from app.models.message import Message
 from app.models.event_channel import EventChannel
+from app.models.passkey import UserPasskey
 
 __all__ = [
     "User", "UserRole",

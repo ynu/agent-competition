@@ -87,6 +87,9 @@ def main():
             "cas_enabled": ("true", "Enable CAS authentication", 60),
             "cas_base_url": ("https://ids.ynu.edu.cn/authserver", "CAS server URL", 61),
             "base_url": ("http://localhost:5173", "Application base URL (for CAS callback)", 62),
+            # ========== Passkey 通行密钥 ==========
+            "passkey_enabled": ("false", "Enable Passkey (WebAuthn) authentication", 66),
+            "passkey_require_for_roles": ("[]", "Roles that must bind Passkey (JSON array: user, reviewer, admin)", 67),
         }
 
         for key, (value, desc, sort_order) in default_settings.items():

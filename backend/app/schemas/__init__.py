@@ -21,6 +21,10 @@ from app.schemas.common import (
     SettingBase, SettingCreate, SettingUpdate, SettingResponse,
     LogBase, LogResponse, PageResponse
 )
+from app.schemas.passkey import (
+    PasskeyCredentialResponse, PasskeyConfigResponse,
+    PasskeyLoginRequest, PasskeyRegisterRequest, ForcePasskeyRequest
+)
 
 __all__ = [
     "UserBase", "UserCreate", "UserUpdate", "UserResponse",
@@ -33,5 +37,7 @@ __all__ = [
     "VoteRequest",
     "ContentBase", "ContentCreate", "ContentUpdate", "ContentResponse", "ContentTreeResponse",
     "SettingBase", "SettingCreate", "SettingUpdate", "SettingResponse",
-    "LogBase", "LogResponse", "PageResponse"
+    "LogBase", "LogResponse", "PageResponse",
+    "PasskeyCredentialResponse", "PasskeyConfigResponse",
+    "PasskeyLoginRequest", "PasskeyRegisterRequest", "ForcePasskeyRequest"
 ]

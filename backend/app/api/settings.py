@@ -44,6 +44,9 @@ DEFAULT_SETTINGS = {
     "turnstile_enabled": {"value": "false", "description": "Enable Cloudflare Turnstile verification", "sort_order": 63},
     "turnstile_site_key": {"value": "", "description": "Cloudflare Turnstile Site Key", "sort_order": 64},
     "turnstile_secret_key": {"value": "", "description": "Cloudflare Turnstile Secret Key (server-side only)", "sort_order": 65},
+    # ========== Passkey 通行密钥 ==========
+    "passkey_enabled": {"value": "false", "description": "Enable Passkey (WebAuthn) authentication", "sort_order": 66},
+    "passkey_require_for_roles": {"value": "[]", "description": "Roles that must bind Passkey (JSON array: user, reviewer, admin)", "sort_order": 67},
     # ========== 版权协议 ==========
     "copyright_agreement": {"value": """我已阅读并理解以下版权声明内容：
 

@@ -10,6 +10,7 @@ from app.core.security import get_current_active_user, require_role, get_passwor
 from app.models.user import User, UserRole
 from app.models.setting import Log
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.passkey import ForcePasskeyRequest
 from app.schemas.common import PageResponse
 from app.services.webhook import trigger_webhook_and_notification
 from app.models.webhook import WebhookEventType
@@ -206,3 +207,83 @@ async def reset_user_password(
     add_log(db, current_user.id, "update", "user", user_id, f"重置用户密码: {user.username}")
 
     return {"message": "密码重置成功"}
+
+
+# ============== Passkey 管理 ==============
+
+@router.get("/{user_id}/passkey-credentials")
+async def get_user_passkey_credentials(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """管理员查看用户的 Passkey（不含私钥）"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    from app.models.passkey import UserPasskey
+    from app.schemas.passkey import PasskeyCredentialResponse
+
+    credentials = db.query(UserPasskey).filter(
+        UserPasskey.user_id == user_id
+    ).order_by(UserPasskey.created_at.desc()).all()
+
+    return {
+        "user_id": user_id,
+        "username": user.username,
+        "passkey_required": user.passkey_required,
+        "credentials": [PasskeyCredentialResponse.model_validate(c) for c in credentials]
+    }
+
+
+@router.post("/{user_id}/reset-passkey")
+async def reset_user_passkey(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """管理员重置用户的所有 Passkey"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能重置自己的 Passkey")
+
+    from app.models.passkey import UserPasskey
+
+    # 删除所有凭证
+    deleted_count = db.query(UserPasskey).filter(
+        UserPasskey.user_id == user_id
+    ).delete()
+    db.commit()
+
+    add_log(db, current_user.id, "reset_passkey", "user", user_id,
+            f"重置用户 Passkey: {user.username}，删除了 {deleted_count} 个凭证")
+
+    return {"message": f"已重置用户 {user.username} 的所有 Passkey，共 {deleted_count} 个"}
+
+
+@router.put("/{user_id}/force-passkey")
+async def set_force_passkey(
+    user_id: int,
+    data: ForcePasskeyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """管理员设置用户是否必须绑定 Passkey"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能修改自己的强制 Passkey 设置")
+
+    user.passkey_required = data.passkey_required
+    db.commit()
+
+    add_log(db, current_user.id, "set_force_passkey", "user", user_id,
+            f"设置用户 {user.username} 强制 Passkey: {data.passkey_required}")
+
+    return {"message": f"已设置用户 {user.username} 强制 Passkey: {data.passkey_required}"}

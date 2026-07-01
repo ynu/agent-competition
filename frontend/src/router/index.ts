@@ -70,6 +70,12 @@ const router = createRouter({
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue')
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/pages/ProfilePage.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

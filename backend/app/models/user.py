@@ -29,6 +29,7 @@ class User(Base):
     is_active = Column(Boolean, default=True, comment="是否激活")
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    passkey_required = Column(Boolean, default=False, comment="是否强制要求绑定 Passkey")
 
     # 关系
     teams_as_leader = relationship("Team", back_populates="leader", foreign_keys="Team.leader_id")

@@ -4,6 +4,7 @@ import { useRoute, RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import Notification from '@/components/Notification.vue'
+import ProfilePage from '@/pages/ProfilePage.vue'
 import api from '@/api'
 
 const route = useRoute()
@@ -13,6 +14,7 @@ const themeStore = useThemeStore()
 
 const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const unreadMessageCount = ref(0)
+const showProfileDialog = ref(false)
 
 const menuItems = computed(() => [
   { path: '/admin', name: '仪表盘', icon: 'dashboard', permissions: [] },
@@ -309,7 +311,7 @@ onUnmounted(() => {
                 </svg>
                 前台
               </RouterLink>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 cursor-pointer" @click="showProfileDialog = true">
                 <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
                   {{ (authStore.user?.nickname || authStore.user?.username || 'U')[0].toUpperCase() }}
                 </div>
@@ -342,6 +344,16 @@ onUnmounted(() => {
     <template v-else>
       <RouterView />
     </template>
+
+    <!-- Profile Dialog -->
+    <el-dialog
+      v-model="showProfileDialog"
+      title="个人设置"
+      width="600px"
+      :close-on-click-modal="true"
+    >
+      <ProfilePage />
+    </el-dialog>
   </div>
 
   <Notification />

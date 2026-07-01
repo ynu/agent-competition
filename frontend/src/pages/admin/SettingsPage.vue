@@ -73,6 +73,9 @@ const settingDescriptions: Record<string, { label: string; desc: string; type: s
   turnstile_enabled: { label: 'Enable Turnstile', desc: 'Enable Cloudflare Turnstile verification for login (true/false)', type: 'text', placeholder: 'true/false' },
   turnstile_site_key: { label: 'Turnstile Site Key', desc: 'Cloudflare Turnstile Site Key (public key)', type: 'text', placeholder: '0x4AAAA...' },
   turnstile_secret_key: { label: 'Turnstile Secret Key', desc: 'Cloudflare Turnstile Secret Key (server-side only)', type: 'text', placeholder: '0x4AAAA...' },
+  // ========== Passkey 通行密钥 ==========
+  passkey_enabled: { label: 'Enable Passkey', desc: 'Enable Passkey (WebAuthn/FIDO2) authentication. Users can login with biometrics or hardware keys (true/false)', type: 'text', placeholder: 'true/false' },
+  passkey_require_for_roles: { label: 'Require Passkey for Roles', desc: 'Roles that must bind Passkey. Enter as JSON array: ["user", "reviewer", "admin"]', type: 'text', placeholder: '[]' },
   // ========== 版权协议 ==========
   copyright_agreement: { label: 'Copyright Agreement', desc: 'Copyright agreement content (Markdown format)', type: 'textarea', placeholder: 'Enter Markdown content...' },
 }
