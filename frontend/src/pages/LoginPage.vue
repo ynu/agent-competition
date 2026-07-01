@@ -53,27 +53,18 @@ async function loadPasskeyConfig() {
 }
 
 async function handlePasskeyLogin() {
-  if (!username.value) {
-    passkeyError.value = '请先输入用户名'
-    return
-  }
-
   passkeyError.value = ''
   passkeyLoading.value = true
 
   try {
-    // 获取登录选项
-    const optionsRes = await passkeyApi.getLoginOptions(username.value)
+    // 获取登录选项（无需用户名）
+    const optionsRes = await passkeyApi.getLoginOptionsDiscoverable()
     const options = JSON.parse(optionsRes.data.options)
 
     // 将 base64url 字符串转换回 ArrayBuffer
     const publicKeyOptions = {
       challenge: base64urlToBuffer(options.challenge),
-      allowCredentials: (options.allowCredentials || []).map((cred: any) => ({
-        type: cred.type,
-        id: base64urlToBuffer(cred.id),
-        transports: cred.transports
-      })),
+      allowCredentials: [],  // 空数组表示可发现凭证
       timeout: options.timeout,
       userVerification: options.userVerification
     }
@@ -89,10 +80,8 @@ async function handlePasskeyLogin() {
       return
     }
 
-    // 验证登录
-    const verifyRes = await passkeyApi.verifyLogin({
-      username: username.value,
-      credential_id: credential.id,
+    // 验证登录（无需用户名）
+    const verifyRes = await passkeyApi.verifyLoginDiscoverable({
       options: JSON.stringify(credential)
     })
 
@@ -277,22 +266,8 @@ function handleCasLogin() {
         <form @submit.prevent="handleLogin" class="space-y-5">
           <!-- Passkey Login (only when ?localAccount=true and passkey tab selected) -->
           <template v-if="showBothTabs && !showPasswordTab && passkeyEnabled && webAuthnSupported">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">用户名/学工号</label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                  </svg>
-                </div>
-                <input
-                  v-model="username"
-                  type="text"
-                  required
-                  class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                  placeholder="请输入用户名"
-                />
-              </div>
+            <div class="text-center py-4 mb-2">
+              <p class="text-sm text-gray-500 mb-6">点击按钮使用已注册的通行密钥登录，无需输入用户名</p>
             </div>
 
             <!-- Error Message -->

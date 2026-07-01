@@ -36,13 +36,19 @@ export const passkeyApi = {
     device_name?: string
   }) => api.post('/auth/passkey/register-verify', data),
 
-  // 登录流程
+  // 登录流程（需要用户名）
   getLoginOptions: (username: string) => api.post<PasskeyLoginOptions>('/auth/passkey/login-options', { username }),
   verifyLogin: (data: {
     username: string
     credential_id: string
     options: string
   }) => api.post<{ access_token: string; token_type: string; user: any }>('/auth/passkey/login-verify', data),
+
+  // 无用户名登录流程（可发现凭证）
+  getLoginOptionsDiscoverable: () => api.post<{ options: string; challenge: string }>('/auth/passkey/login-options-discoverable'),
+  verifyLoginDiscoverable: (data: {
+    options: string
+  }) => api.post<{ access_token: string; token_type: string; user: any }>('/auth/passkey/login-verify-discoverable', data),
 
   // 用户凭证管理
   getMyCredentials: () => api.get<PasskeyCredential[]>('/passkey/credentials'),

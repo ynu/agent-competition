@@ -30,6 +30,11 @@ class PasskeyLoginRequest(BaseModel):
     options: str
 
 
+class PasskeyLoginDiscoverableRequest(BaseModel):
+    """Passkey 无用户名登录验证请求"""
+    options: str
+
+
 class PasskeyRegisterRequest(BaseModel):
     """Passkey 注册验证请求"""
     options: str

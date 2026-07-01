@@ -15,7 +15,7 @@ from webauthn import (
     options_to_json
 )
 from webauthn.helpers import bytes_to_base64url
-from webauthn.helpers.structs import PublicKeyCredentialDescriptor, AuthenticatorTransport, UserVerificationRequirement
+from webauthn.helpers.structs import PublicKeyCredentialDescriptor, AuthenticatorTransport, UserVerificationRequirement, ResidentKeyRequirement, AuthenticatorSelectionCriteria
 from app.core.database import get_db
 from app.core.security import get_current_user, create_access_token
 from app.core.config import settings
@@ -24,7 +24,7 @@ from app.models.passkey import UserPasskey
 from app.models.setting import Setting, Log
 from app.schemas.passkey import (
     PasskeyConfigResponse, PasskeyCredentialResponse, PasskeyLoginRequest,
-    PasskeyRegisterRequest
+    PasskeyRegisterRequest, PasskeyLoginDiscoverableRequest
 )
 from app.schemas.user import TokenResponse, UserResponse
 
@@ -115,7 +115,10 @@ async def get_register_options(
         user_display_name=current_user.nickname or current_user.username,
         exclude_credentials=exclude_credentials,
         timeout=60000,
-        challenge=challenge_bytes  # 传递原始字节
+        challenge=challenge_bytes,
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            resident_key=ResidentKeyRequirement.REQUIRED
+        )
     )
 
     return {
@@ -136,7 +139,6 @@ async def verify_registration(
 
     # 验证 challenge
     stored_challenge = _challenge_store.pop(f"register_{current_user.id}", None)
-    print(f"verify_registration get stored_challenge of register_{current_user.id}: {stored_challenge}")
     if not stored_challenge:
         raise HTTPException(status_code=400, detail="注册会话已过期，请重新开始")
 
@@ -236,6 +238,34 @@ async def get_login_options(
     }
 
 
+@router.post("/login-options-discoverable")
+async def get_login_options_discoverable(
+    db: Session = Depends(get_db)
+):
+    """获取无需用户名的登录选项（可发现凭证）"""
+    if not get_passkey_config(db)["enabled"]:
+        raise HTTPException(status_code=400, detail="Passkey 功能未启用")
+
+    rp_id = get_rp_id(db)
+
+    # 生成 challenge
+    challenge_bytes = secrets.token_bytes(32)
+    _challenge_store["login_discoverable"] = challenge_bytes
+
+    options = generate_authentication_options(
+        rp_id=rp_id,
+        challenge=challenge_bytes,
+        allow_credentials=[],  # 空数组表示不限制，允许任何已注册的凭证
+        timeout=60000,
+        user_verification=UserVerificationRequirement.PREFERRED
+    )
+
+    return {
+        "options": options_to_json(options),
+        "challenge": bytes_to_base64url(challenge_bytes)
+    }
+
+
 @router.post("/login-verify", response_model=TokenResponse)
 async def verify_login(
     request: PasskeyLoginRequest,
@@ -262,10 +292,6 @@ async def verify_login(
         UserPasskey.user_id == user.id,
         UserPasskey.credential_id == request.credential_id
     ).first()
-
-    print(f"DEBUG login: user_id={user.id}, request.credential_id={request.credential_id}, passkey found: {passkey is not None}")
-    if passkey:
-        print(f"DEBUG login: passkey.credential_id={passkey.credential_id}, type={type(passkey.credential_id)}")
 
     if not passkey:
         raise HTTPException(status_code=400, detail="凭证不匹配")
@@ -301,6 +327,73 @@ async def verify_login(
             user=UserResponse.model_validate(user)
         )
 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"登录验证失败: {str(e)}")
+
+
+@router.post("/login-verify-discoverable", response_model=TokenResponse)
+async def verify_login_discoverable(
+    request: PasskeyLoginDiscoverableRequest,
+    db: Session = Depends(get_db)
+):
+    """验证无需用户名的登录响应（可发现凭证）"""
+    if not get_passkey_config(db)["enabled"]:
+        raise HTTPException(status_code=400, detail="Passkey 功能未启用")
+
+    stored_challenge = _challenge_store.pop("login_discoverable", None)
+    if not stored_challenge:
+        raise HTTPException(status_code=400, detail="登录会话已过期，请重新开始")
+
+    try:
+        options_dict = json.loads(request.options)
+        credential_id = options_dict.get("id", "")
+
+        # 通过 credential_id 查找用户
+        passkey = db.query(UserPasskey).filter(
+            UserPasskey.credential_id == credential_id
+        ).first()
+
+        if not passkey:
+            raise HTTPException(status_code=400, detail="凭证不匹配")
+
+        user = db.query(User).filter(User.id == passkey.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="用户已被禁用")
+
+        rp_id = get_rp_id(db)
+
+        import json as json_module
+        public_key_bytes = bytes.fromhex(json_module.loads(passkey.public_key))
+        verification = verify_authentication_response(
+            credential=request.options,
+            expected_rp_id=rp_id,
+            expected_origin=get_base_url(db),
+            expected_challenge=stored_challenge,
+            credential_public_key=public_key_bytes,
+            credential_current_sign_count=passkey.counter
+        )
+
+        # 更新计数器
+        passkey.counter = verification.new_sign_count
+        passkey.last_used_at = datetime.utcnow()
+        db.commit()
+
+        # 创建 token
+        access_token = create_access_token(data={"sub": str(user.id)})
+
+        add_log(db, user.id, "login", "passkey",
+                details=f"Passkey 登录（无用户名）: {user.username}")
+
+        return TokenResponse(
+            access_token=access_token,
+            user=UserResponse.model_validate(user)
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"登录验证失败: {str(e)}")
 
