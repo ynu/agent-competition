@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api'
@@ -48,6 +48,14 @@ function base64urlToBuffer(base64url: string): ArrayBuffer {
 const webAuthnSupported = computed(() => {
   const creds = navigator.credentials
   return !!(creds && typeof creds.create === 'function' && typeof creds.get === 'function')
+})
+
+// Watch for password tab visibility to re-render turnstile
+watch(showPasswordTab, async (newVal) => {
+  if (newVal && showBothTabs.value) {
+    // Password tab is now visible, render turnstile
+    await loadTurnstileConfig()
+  }
 })
 
 async function loadPasskeyConfig() {
@@ -161,33 +169,49 @@ async function loadTurnstileConfig() {
 function renderTurnstile() {
   if (!turnstileEnabled.value || !turnstileSiteKey.value) return
 
-  const container = document.getElementById('turnstile-container')
-  if (!container) return
-
-  // Clear existing widget
-  container.innerHTML = ''
-  if (turnstileWidgetId.value) {
-    try {
-      window.turnstile?.remove(turnstileWidgetId.value)
-    } catch (e) {
-      // ignore
-    }
+  // Wait for container to be in DOM
+  const waitForContainer = () => {
+    return new Promise<HTMLElement | null>((resolve) => {
+      const container = document.getElementById('turnstile-container')
+      if (container) {
+        resolve(container)
+        return
+      }
+      // Wait a bit for DOM to update
+      setTimeout(() => {
+        resolve(document.getElementById('turnstile-container'))
+      }, 50)
+    })
   }
 
-  const result = window.turnstile?.render(container, {
-    sitekey: turnstileSiteKey.value,
-    callback: (token: string) => {
-      turnstileToken.value = token
-    },
-    'expired-callback': () => {
-      turnstileToken.value = ''
-    },
-    'error-callback': () => {
-      turnstileToken.value = ''
-    },
-    theme: 'light'
+  waitForContainer().then((container) => {
+    if (!container) return
+
+    // Clear existing widget
+    container.innerHTML = ''
+    if (turnstileWidgetId.value) {
+      try {
+        window.turnstile?.remove(turnstileWidgetId.value)
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const result = window.turnstile?.render(container, {
+      sitekey: turnstileSiteKey.value,
+      callback: (token: string) => {
+        turnstileToken.value = token
+      },
+      'expired-callback': () => {
+        turnstileToken.value = ''
+      },
+      'error-callback': () => {
+        turnstileToken.value = ''
+      },
+      theme: 'light'
+    })
+    turnstileWidgetId.value = typeof result === 'string' ? result : null
   })
-  turnstileWidgetId.value = typeof result === 'string' ? result : null
 }
 
 onMounted(async () => {
