@@ -70,12 +70,6 @@ const router = createRouter({
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue')
-        },
-        {
-          path: 'profile',
-          name: 'profile',
-          component: () => import('@/pages/ProfilePage.vue'),
-          meta: { requiresAuth: true }
         }
       ]
     },
@@ -182,6 +176,12 @@ const router = createRouter({
           name: 'admin-copyright-agreements',
           component: () => import('@/pages/admin/CopyrightAgreementsPage.vue'),
           meta: { requiresAdmin: true }
+        },
+        {
+          path: 'profile',
+          name: 'admin-profile',
+          component: () => import('@/pages/admin/ProfilePage.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     }

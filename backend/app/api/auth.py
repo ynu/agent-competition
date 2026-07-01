@@ -231,6 +231,25 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
 
+@router.put("/me", response_model=UserResponse)
+async def update_current_user_info(
+    user_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新当前用户信息"""
+    allowed_fields = ['nickname', 'email']
+    update_data = {k: v for k, v in user_data.items() if k in allowed_fields}
+
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+
+    db.commit()
+    db.refresh(current_user)
+
+    return UserResponse.model_validate(current_user)
+
+
 @router.post("/logout")
 async def logout(
     request: Request,
