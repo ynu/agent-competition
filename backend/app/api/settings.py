@@ -40,6 +40,10 @@ DEFAULT_SETTINGS = {
     "cas_enabled": {"value": "true", "description": "Enable CAS authentication", "sort_order": 60},
     "cas_base_url": {"value": "https://ids.ynu.edu.cn/authserver", "description": "CAS server URL", "sort_order": 61},
     "base_url": {"value": "http://localhost:5173", "description": "Application base URL (for CAS callback)", "sort_order": 62},
+    # ========== Turnstile 验证 ==========
+    "turnstile_enabled": {"value": "false", "description": "Enable Cloudflare Turnstile verification", "sort_order": 63},
+    "turnstile_site_key": {"value": "", "description": "Cloudflare Turnstile Site Key", "sort_order": 64},
+    "turnstile_secret_key": {"value": "", "description": "Cloudflare Turnstile Secret Key (server-side only)", "sort_order": 65},
     # ========== 版权协议 ==========
     "copyright_agreement": {"value": """我已阅读并理解以下版权声明内容：
 

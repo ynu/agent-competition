@@ -69,6 +69,10 @@ const settingDescriptions: Record<string, { label: string; desc: string; type: s
   cas_enabled: { label: 'Enable CAS', desc: 'Enable CAS 2.0 unified authentication (true/false)', type: 'text', placeholder: 'true/false' },
   cas_base_url: { label: 'CAS Server URL', desc: 'CAS server address', type: 'text', placeholder: 'https://ids.ynu.edu.cn/authserver' },
   base_url: { label: 'Application Base URL', desc: 'For CAS callback, must be publicly accessible in production', type: 'text', placeholder: 'https://your-domain.com' },
+  // ========== Turnstile 验证 ==========
+  turnstile_enabled: { label: 'Enable Turnstile', desc: 'Enable Cloudflare Turnstile verification for login (true/false)', type: 'text', placeholder: 'true/false' },
+  turnstile_site_key: { label: 'Turnstile Site Key', desc: 'Cloudflare Turnstile Site Key (public key)', type: 'text', placeholder: '0x4AAAA...' },
+  turnstile_secret_key: { label: 'Turnstile Secret Key', desc: 'Cloudflare Turnstile Secret Key (server-side only)', type: 'text', placeholder: '0x4AAAA...' },
   // ========== 版权协议 ==========
   copyright_agreement: { label: 'Copyright Agreement', desc: 'Copyright agreement content (Markdown format)', type: 'textarea', placeholder: 'Enter Markdown content...' },
 }

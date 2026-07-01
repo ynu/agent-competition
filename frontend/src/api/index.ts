@@ -50,10 +50,11 @@ export default api
 
 // Auth APIs
 export const authApi = {
-  login: (data: { username: string; password: string }) => api.post('/auth/login', data),
+  login: (data: { username: string; password: string; turnstile_token?: string }) => api.post('/auth/login', data),
   unifiedAuth: (data: { code?: string }) => api.post('/auth/unified-auth', data),
   logout: () => api.post<{ message: string; cas_logout_url?: string }>('/auth/logout'),
-  me: () => api.get('/auth/me')
+  me: () => api.get('/auth/me'),
+  getTurnstileConfig: () => api.get<{ enabled: boolean; site_key: string }>('/auth/turnstile/config')
 }
 
 // User APIs

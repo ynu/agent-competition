@@ -30,10 +30,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isReviewer = computed(() => user.value?.role === 'reviewer' || user.value?.role === 'admin')
 
-  async function login(username: string, password: string) {
+  async function login(username: string, password: string, turnstileToken?: string) {
     loading.value = true
     try {
-      const response = await authApi.login({ username, password })
+      const response = await authApi.login({ username, password, turnstile_token: turnstileToken || undefined })
       token.value = response.data.access_token
       localStorage.setItem('token', response.data.access_token)
       user.value = response.data.user

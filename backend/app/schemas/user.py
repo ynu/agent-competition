@@ -45,6 +45,7 @@ class UserResponse(UserBase):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    turnstile_token: Optional[str] = Field(None, description="Cloudflare Turnstile verification token")
 
 
 # 统一身份认证登录请求

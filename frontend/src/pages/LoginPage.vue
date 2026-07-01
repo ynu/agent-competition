@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,10 +14,90 @@ const showPasswordTab = ref(false)
 const error = ref('')
 const loading = ref(false)
 
+// Turnstile config
+const turnstileEnabled = ref(false)
+const turnstileSiteKey = ref('')
+const turnstileToken = ref('')
+const turnstileWidgetId = ref<string | null>(null)
+
 // Default: show only unified auth, show both when ?localAccount=true
 const showBothTabs = computed(() => route.query.localAccount === 'true')
 
-onMounted(() => {
+function loadTurnstileScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.turnstile) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    document.head.appendChild(script)
+  })
+}
+
+async function loadTurnstileConfig() {
+  try {
+    const res = await authApi.getTurnstileConfig()
+    turnstileEnabled.value = res.data.enabled
+    turnstileSiteKey.value = res.data.site_key || ''
+
+    if (turnstileEnabled.value && turnstileSiteKey.value) {
+      await loadTurnstileScript()
+      // Wait for turnstile to be ready
+      await new Promise<void>((resolve) => {
+        if (window.turnstile) {
+          resolve()
+          return
+        }
+        const check = setInterval(() => {
+          if (window.turnstile) {
+            clearInterval(check)
+            resolve()
+          }
+        }, 100)
+      })
+      renderTurnstile()
+    }
+  } catch (e) {
+    console.error('Failed to load turnstile config:', e)
+  }
+}
+
+function renderTurnstile() {
+  if (!turnstileEnabled.value || !turnstileSiteKey.value) return
+
+  const container = document.getElementById('turnstile-container')
+  if (!container) return
+
+  // Clear existing widget
+  container.innerHTML = ''
+  if (turnstileWidgetId.value) {
+    try {
+      window.turnstile.remove(turnstileWidgetId.value)
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  turnstileWidgetId.value = window.turnstile.render(container, {
+    sitekey: turnstileSiteKey.value,
+    callback: (token: string) => {
+      turnstileToken.value = token
+    },
+    'expired-callback': () => {
+      turnstileToken.value = ''
+    },
+    'error-callback': () => {
+      turnstileToken.value = ''
+    },
+    theme: 'light'
+  })
+}
+
+onMounted(async () => {
   // Check if there's a token in URL (from CAS callback)
   const token = route.query.token as string
   if (token) {
@@ -31,6 +112,11 @@ onMounted(() => {
   if (!showBothTabs.value) {
     showPasswordTab.value = false
   }
+
+  // Load turnstile config if showing password tab
+  if (showBothTabs.value) {
+    await loadTurnstileConfig()
+  }
 })
 
 async function handleLogin() {
@@ -38,11 +124,15 @@ async function handleLogin() {
   loading.value = true
 
   try {
-    await authStore.login(username.value, password.value)
+    await authStore.login(username.value, password.value, turnstileToken.value)
     const redirect = route.query.redirect as string || '/admin'
     router.push(redirect)
   } catch (e: any) {
     error.value = e.response?.data?.detail || '登录失败'
+    // Reset turnstile on error
+    if (turnstileEnabled.value) {
+      renderTurnstile()
+    }
   } finally {
     loading.value = false
   }
@@ -157,6 +247,11 @@ function handleCasLogin() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             {{ error }}
+          </div>
+
+          <!-- Turnstile verification -->
+          <div v-if="showPasswordTab && turnstileEnabled" class="flex justify-center">
+            <div id="turnstile-container"></div>
           </div>
 
           <!-- Submit Button (password login) -->

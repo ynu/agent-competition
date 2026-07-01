@@ -88,6 +88,21 @@ def get_cas_config(db: Session) -> dict:
     }
 
 
+def get_turnstile_config(db: Session) -> dict:
+    """获取 Turnstile 配置"""
+    from app.models.setting import Setting
+
+    enabled = db.query(Setting).filter(Setting.key == "turnstile_enabled").first()
+    site_key = db.query(Setting).filter(Setting.key == "turnstile_site_key").first()
+    secret_key = db.query(Setting).filter(Setting.key == "turnstile_secret_key").first()
+
+    return {
+        "enabled": enabled.value.lower() == "true" if enabled else False,
+        "site_key": site_key.value if site_key else "",
+        "secret_key": secret_key.value if secret_key else "",
+    }
+
+
 def add_log(db: Session, user_id: Optional[int], action: str, resource: str = None,
             resource_id: Optional[int] = None, details: str = None, ip_address: str = None):
     """添加日志"""
@@ -103,6 +118,54 @@ def add_log(db: Session, user_id: Optional[int], action: str, resource: str = No
     db.commit()
 
 
+@router.get("/turnstile/config")
+async def get_turnstile_config_endpoint(db: Session = Depends(get_db)):
+    """获取 Turnstile 配置（仅返回是否启用和 site_key）"""
+    config = get_turnstile_config(db)
+    return {
+        "enabled": config["enabled"],
+        "site_key": config["site_key"]
+    }
+
+
+def verify_turnstile(token: str, db: Session) -> bool:
+    """验证 Turnstile token"""
+    config = get_turnstile_config(db)
+
+    if not config["enabled"]:
+        return True  # 未启用，直接通过
+
+    if not config["secret_key"]:
+        return True  # 未配置密钥，直接通过
+
+    import asyncio
+
+    async def _verify():
+        verify_url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                verify_url,
+                data={
+                    "secret": config["secret_key"],
+                    "response": token
+                },
+                timeout=10.0
+            )
+            result = response.json()
+            return result.get("success", False)
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_verify())
+        finally:
+            loop.close()
+        return result
+    except Exception:
+        return True  # 验证失败时默认通过，避免影响用户体验
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: Request,
@@ -110,6 +173,22 @@ async def login(
     db: Session = Depends(get_db)
 ):
     """用户名密码登录"""
+    # 检查 Turnstile 是否启用
+    turnstile_config = get_turnstile_config(db)
+
+    # 如果启用了 Turnstile，必须验证
+    if turnstile_config["enabled"]:
+        if not login_data.turnstile_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="人机验证未完成，请完成验证后重试"
+            )
+        if not verify_turnstile(login_data.turnstile_token, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="人机验证失败，请重试"
+            )
+
     user = db.query(User).filter(User.username == login_data.username).first()
 
     if not user or not user.hashed_password:
