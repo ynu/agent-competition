@@ -104,13 +104,13 @@ async function handlePasskeyLogin() {
     if (verifyRes.data.requires_otp && verifyRes.data.temp_token) {
       // 需要 2FA 验证
       requiresOtp.value = true
-      tempToken.value = verifyRes.data.temp_token
+      tempToken.value = verifyRes.data.temp_token!
       passkeyLoading.value = false
       return
     }
 
     // 保存 token 并跳转
-    localStorage.setItem('token', verifyRes.data.access_token)
+    localStorage.setItem('token', verifyRes.data.access_token!)
     const redirect = route.query.redirect as string || '/admin'
     window.location.href = redirect
   } catch (e: any) {
