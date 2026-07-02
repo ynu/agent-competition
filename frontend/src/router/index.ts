@@ -124,6 +124,12 @@ const router = createRouter({
           meta: { requiresPermission: ['review:read', 'review:create', 'review:update'] }
         },
         {
+          path: 'analysis',
+          name: 'admin-analysis',
+          component: () => import('@/pages/admin/AnalysisPage.vue'),
+          meta: { requiresPermission: ['analysis:read'] }
+        },
+        {
           path: 'votes',
           name: 'admin-votes',
           component: () => import('@/pages/admin/VotesPage.vue'),

@@ -21,6 +21,7 @@ const menuItems = computed(() => [
   { path: '/admin/teams', name: '队伍管理', icon: 'team', permissions: ['team:read', 'team:create', 'team:update', 'team:delete', 'team:audit'] },
   { path: '/admin/works', name: '作品管理', icon: 'works', permissions: ['work:read', 'work:create', 'work:update', 'work:delete', 'work:audit'] },
   { path: '/admin/reviews', name: '评审管理', icon: 'review', permissions: ['review:read', 'review:create', 'review:update'] },
+  { path: '/admin/analysis', name: '评分分析', icon: 'analysis', permissions: ['analysis:read'] },
   { path: '/admin/votes', name: '投票管理', icon: 'votes', permissions: ['vote:read', 'vote:manage'] },
   { path: '/admin/contents', name: '内容管理', icon: 'content', permissions: ['content:read', 'content:create', 'content:update', 'content:delete'] },
   { path: '/admin/messages', name: '消息管理', icon: 'message', permissions: [] },
@@ -179,6 +180,9 @@ onUnmounted(() => {
                     </svg>
                     <svg v-else-if="item.icon === 'review'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <svg v-else-if="item.icon === 'analysis'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
                     <svg v-else-if="item.icon === 'content'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>

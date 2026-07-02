@@ -21,6 +21,7 @@ class PermissionCategory(str, enum.Enum):
     WEBHOOK = "webhook"    # Webhook管理
     EVENT = "event"        # 事件通知
     SYSTEM = "system"      # 系统管理
+    ANALYSIS = "analysis"  # 评分分析
 
 
 class PermissionAction(str, enum.Enum):
@@ -142,6 +143,10 @@ def get_default_permissions():
         {"code": "event:create", "name": "创建事件通知", "category": "event", "action": "create"},
         {"code": "event:update", "name": "更新事件通知", "category": "event", "action": "update"},
         {"code": "event:delete", "name": "删除事件通知", "category": "event", "action": "delete"},
+
+        # 评分分析
+        {"code": "analysis:read", "name": "查看评分分析", "category": "analysis", "action": "read"},
+        {"code": "analysis:export", "name": "导出评分分析", "category": "analysis", "action": "export"},
     ]
     return permissions
 
@@ -159,7 +164,7 @@ def get_default_roles():
             "code": "reviewer",
             "name": "评审用户",
             "description": "专家评审，可以审核队伍、作品，进行评审打分",
-            "permissions": ["team:read", "team:audit", "work:read", "work:audit", "review:create", "review:read", "review:update", "content:read", "log:read"]
+            "permissions": ["team:read", "team:audit", "work:read", "work:audit", "review:create", "review:read", "review:update", "content:read", "log:read", "analysis:read"]
         },
         {
             "code": "admin",

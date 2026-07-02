@@ -16,6 +16,7 @@ from app.api.messages import router as messages_router
 from app.api.event_channels import router as event_channels_router
 from app.api.passkey import router as passkey_router, management_router as passkey_management_router
 from app.api.otp import router as otp_router
+from app.api.admin.analysis import router as analysis_router
 
 __all__ = [
     "auth_router",
@@ -35,5 +36,6 @@ __all__ = [
     "event_channels_router",
     "passkey_router",
     "passkey_management_router",
-    "otp_router"
+    "otp_router",
+    "analysis_router"
 ]
