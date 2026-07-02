@@ -291,44 +291,29 @@ async def update_current_user_info(
 
 from pydantic import BaseModel, Field
 
-class ChangePasswordRequest(BaseModel):
-    """修改密码请求"""
-    old_password: str = Field(..., min_length=6, description="旧密码")
-    new_password: str = Field(..., min_length=6, description="新密码")
+class ResetPasswordRequest(BaseModel):
+    """重置密码请求（不验证旧密码）"""
+    new_password: str = Field(..., min_length=6, max_length=100, description="新密码")
 
 
-@router.post("/change-password")
-async def change_password(
-    request: ChangePasswordRequest,
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """修改当前用户密码"""
-    # 检查用户是否有密码（CAS 用户没有密码）
-    if not current_user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="当前账户不支持修改密码（通过统一身份认证登录）"
-        )
-
-    # 验证旧密码
-    if not verify_password(request.old_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="旧密码错误"
-        )
-
+    """重置当前用户密码（不验证旧密码，用于本地账户密码重置）"""
     # 更新密码
     current_user.hashed_password = get_password_hash(request.new_password)
     db.commit()
 
     add_log(
-        db, current_user.id, "change_password", "auth",
-        details=f"用户 {current_user.username} 修改密码",
+        db, current_user.id, "reset_password", "auth",
+        details=f"用户 {current_user.username} 重置密码",
         ip_address=None
     )
 
-    return {"message": "密码修改成功"}
+    return {"message": "密码重置成功"}
 
 
 @router.post("/logout")

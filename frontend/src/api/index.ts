@@ -55,7 +55,7 @@ export const authApi = {
   logout: () => api.post<{ message: string; cas_logout_url?: string }>('/auth/logout'),
   me: () => api.get('/auth/me'),
   getTurnstileConfig: () => api.get<{ enabled: boolean; site_key: string }>('/auth/turnstile/config'),
-  changePassword: (data: { old_password: string; new_password: string }) => api.post('/auth/change-password', data)
+  resetPassword: (data: { new_password: string }) => api.post('/auth/reset-password', data)
 }
 
 // User APIs
