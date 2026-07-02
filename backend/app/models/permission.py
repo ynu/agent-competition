@@ -17,6 +17,7 @@ class PermissionCategory(str, enum.Enum):
     CONTENT = "content"    # 内容管理
     SETTING = "setting"    # 配置管理
     LOG = "log"            # 日志管理
+    VOTE = "vote"          # 投票管理
     MESSAGE = "message"    # 消息管理
     WEBHOOK = "webhook"    # Webhook管理
     EVENT = "event"        # 事件通知
