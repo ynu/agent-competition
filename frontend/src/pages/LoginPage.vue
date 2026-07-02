@@ -253,7 +253,9 @@ async function handleLogin() {
       loading.value = false
     } else {
       // 直接登录成功
-      localStorage.setItem('token', res.data.access_token)
+      localStorage.setItem('token', res.data.access_token!)
+      // 更新 authStore 的 token
+      authStore.$patch({ token: res.data.access_token! })
       await authStore.fetchUser()
       const redirect = route.query.redirect as string || '/admin'
       router.push(redirect)
