@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import (
-    verify_password, get_password_hash, create_access_token, get_current_user
+    verify_password, get_password_hash, create_access_token, get_current_user, decode_token
 )
 from app.core.config import settings
 from app.core.otp import decrypt_otp_secret
@@ -247,12 +247,12 @@ async def login(
         }
 
     # 创建 token - 必须使用字符串
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "login_method": "local"})
 
     # 记录登录日志
     add_log(
         db, user.id, "login", "auth",
-        details=f"用户 {user.username} 登录成功",
+        details=f"用户 {user.username} 登录成功（本地账号）",
         ip_address=request.client.host if request.client else None
     )
 
@@ -329,8 +329,19 @@ async def logout(
         ip_address=request.client.host if request.client else None
     )
 
-    # 如果是CAS登录用户，需要跳转到CAS的logout页面来清除CAS session
-    if current_user.auth_source == "cas":
+    # 从 token 中获取登录方式
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    login_method = None
+    if token:
+        payload = decode_token(token)
+        if payload:
+            login_method = payload.get("login_method")
+
+    # 只有 CAS 登录用户且本次登录方式是 CAS（通过统一身份认证页面登录）
+    # 才需要跳转到 CAS 的 logout 页面来清除 CAS session
+    # Passkey 或本地账号登录的用户只清除本地 token
+    if current_user.auth_source == "cas" and login_method == "cas":
         cas_config = get_cas_config(db)
         frontend_url = get_base_url(db)
         cas_logout_url = f"{cas_config['cas_logout_url']}?service={quote(frontend_url + '/login', safe='')}"
@@ -425,10 +436,10 @@ async def otp_login(
             raise HTTPException(status_code=400, detail="验证码错误")
 
         # 创建正式 token
-        access_token = create_access_token(data={"sub": str(user.id)})
+        access_token = create_access_token(data={"sub": str(user.id), "login_method": "local"})
 
         add_log(db, user.id, "login", "auth",
-                details=f"用户 {user.username} 通过 2FA 登录",
+                details=f"用户 {user.username} 通过 2FA 登录（本地账号）",
                 ip_address=request.client.host if request.client else None)
 
         return TokenResponse(
@@ -620,7 +631,7 @@ async def cas_callback(
         )
 
     # 创建 token
-    jwt_token = create_access_token(data={"sub": str(user.id)})
+    jwt_token = create_access_token(data={"sub": str(user.id), "login_method": "cas"})
 
     # 记录登录日志
     add_log(

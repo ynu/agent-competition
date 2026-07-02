@@ -329,7 +329,7 @@ async def verify_login(
             }
 
         # 创建 token
-        access_token = create_access_token(data={"sub": str(user.id)})
+        access_token = create_access_token(data={"sub": str(user.id), "login_method": "local"})
 
         add_log(db, user.id, "login", "passkey",
                 details=f"Passkey 登录: {user.username}")
@@ -409,7 +409,7 @@ async def verify_login_discoverable(
             }
 
         # 创建 token
-        access_token = create_access_token(data={"sub": str(user.id)})
+        access_token = create_access_token(data={"sub": str(user.id), "login_method": "local"})
 
         add_log(db, user.id, "login", "passkey",
                 details=f"Passkey 登录（无用户名）: {user.username}")
