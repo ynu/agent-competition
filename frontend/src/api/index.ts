@@ -54,7 +54,8 @@ export const authApi = {
   unifiedAuth: (data: { code?: string }) => api.post('/auth/unified-auth', data),
   logout: () => api.post<{ message: string; cas_logout_url?: string }>('/auth/logout'),
   me: () => api.get('/auth/me'),
-  getTurnstileConfig: () => api.get<{ enabled: boolean; site_key: string }>('/auth/turnstile/config')
+  getTurnstileConfig: () => api.get<{ enabled: boolean; site_key: string }>('/auth/turnstile/config'),
+  changePassword: (data: { old_password: string; new_password: string }) => api.post('/auth/change-password', data)
 }
 
 // User APIs

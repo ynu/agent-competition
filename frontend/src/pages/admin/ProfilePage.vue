@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api from '@/api'
+import api, { authApi } from '@/api'
 import { passkeyApi, type PasskeyCredential, type PasskeyConfig } from '@/api/passkey'
 import { otpApi, type OTPSetupResponse } from '@/api/otp'
 import Notification from '@/components/Notification.vue'
@@ -20,6 +20,16 @@ const profileForm = ref({
   nickname: '',
   email: ''
 })
+
+// Password change
+const showPasswordModal = ref(false)
+const passwordForm = ref({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+const passwordLoading = ref(false)
+const passwordError = ref('')
 
 // Passkey
 const passkeyConfig = ref<PasskeyConfig>({ enabled: false, require_for_roles: [] })
@@ -225,6 +235,36 @@ async function handleRenameCredential(id: number, currentName: string) {
   }
 }
 
+// Password change functions
+async function handleChangePassword() {
+  passwordError.value = ''
+
+  if (passwordForm.value.new_password.length < 6) {
+    passwordError.value = '新密码至少需要6个字符'
+    return
+  }
+
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+
+  passwordLoading.value = true
+  try {
+    await authApi.changePassword({
+      old_password: passwordForm.value.old_password,
+      new_password: passwordForm.value.new_password
+    })
+    showPasswordModal.value = false
+    passwordForm.value = { old_password: '', new_password: '', confirm_password: '' }
+    showNotification('success', '密码修改成功')
+  } catch (e: any) {
+    passwordError.value = e.response?.data?.detail || '修改密码失败'
+  } finally {
+    passwordLoading.value = false
+  }
+}
+
 async function loadOtpConfig() {
   try {
     const res = await otpApi.getConfig()
@@ -314,13 +354,22 @@ async function handleOtpDisable() {
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold">账户信息</h2>
-          <button
-            v-if="!editingProfile"
-            @click="editingProfile = true"
-            class="text-sm text-blue-600 hover:text-blue-700"
-          >
-            编辑
-          </button>
+          <div class="flex gap-2">
+            <button
+              v-if="userInfo?.auth_source === 'local'"
+              @click="showPasswordModal = true"
+              class="text-sm px-3 py-1 text-orange-600 hover:bg-orange-50 rounded"
+            >
+              修改密码
+            </button>
+            <button
+              v-if="!editingProfile"
+              @click="editingProfile = true"
+              class="text-sm text-blue-600 hover:text-blue-700"
+            >
+              编辑
+            </button>
+          </div>
         </div>
 
         <template v-if="editingProfile">
@@ -568,6 +617,66 @@ async function handleOtpDisable() {
               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {{ otpLoading ? '验证中...' : '验证并启用' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div v-if="showPasswordModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">修改密码</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label>
+            <input
+              v-model="passwordForm.old_password"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="请输入旧密码"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+            <input
+              v-model="passwordForm.new_password"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="至少6个字符"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+            <input
+              v-model="passwordForm.confirm_password"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="再次输入新密码"
+              @keyup.enter="handleChangePassword"
+            />
+          </div>
+
+          <div v-if="passwordError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {{ passwordError }}
+          </div>
+
+          <div class="flex gap-2 justify-end">
+            <button
+              @click="showPasswordModal = false; passwordForm = { old_password: '', new_password: '', confirm_password: '' }; passwordError = ''"
+              class="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              @click="handleChangePassword"
+              :disabled="passwordLoading"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {{ passwordLoading ? '提交中...' : '确认修改' }}
             </button>
           </div>
         </div>
