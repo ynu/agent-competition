@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, RouterLink, RouterView, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, type User } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { userApi } from '@/api'
 import Notification from '@/components/Notification.vue'
 import api from '@/api'
 
@@ -70,6 +71,12 @@ async function fetchUnreadMessages() {
 const unreadDropdownMessages = ref<any[]>([])
 const showUnreadDropdown = ref(false)
 
+// User switch state (admin only)
+const showUserSwitch = ref(false)
+const switchSearchQuery = ref('')
+const switchSearchResults = ref<User[]>([])
+const switchSearching = ref(false)
+
 async function toggleUnreadDropdown() {
   showUnreadDropdown.value = !showUnreadDropdown.value
   if (showUnreadDropdown.value && unreadDropdownMessages.value.length === 0) {
@@ -111,6 +118,46 @@ function handleClickOutside(event: MouseEvent) {
   if (!target.closest('.unread-dropdown-container')) {
     showUnreadDropdown.value = false
   }
+}
+
+// User switch functions (admin only)
+function openUserSwitch() {
+  if (!authStore.isAdmin) return
+  showUserSwitch.value = true
+  switchSearchQuery.value = ''
+  switchSearchResults.value = []
+}
+
+function closeUserSwitch() {
+  showUserSwitch.value = false
+}
+
+async function searchSwitchUsers() {
+  if (!switchSearchQuery.value.trim()) {
+    switchSearchResults.value = []
+    return
+  }
+  switchSearching.value = true
+  try {
+    const res = await userApi.list({ keyword: switchSearchQuery.value, page_size: 10 })
+    switchSearchResults.value = res.data.items || []
+  } catch {
+    switchSearchResults.value = []
+  } finally {
+    switchSearching.value = false
+  }
+}
+
+async function doSwitchUser(user: User) {
+  await authStore.switchToUser(user)
+  showUserSwitch.value = false
+  router.go(0)
+}
+
+function restoreAdminFromSwitch() {
+  authStore.clearSwitchedUser()
+  showUserSwitch.value = false
+  router.go(0)
 }
 
 onMounted(() => {
@@ -333,6 +380,19 @@ onUnmounted(() => {
                 </svg>
                 退出
               </button>
+              <!-- Admin user switch button: show when original user was admin -->
+              <button
+                v-if="authStore.isSwitched || authStore.isAdmin"
+                @click="authStore.isSwitched ? restoreAdminFromSwitch() : openUserSwitch()"
+                class="text-sm flex items-center gap-1"
+                :class="authStore.isSwitched ? 'text-green-600 hover:text-green-700' : 'text-orange-500 hover:text-orange-600'"
+                :title="authStore.isSwitched ? '恢复管理员身份' : '切换用户（仅管理员可见）'"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+                {{ authStore.isSwitched ? '恢复管理员' : '切换用户' }}
+              </button>
             </div>
           </header>
 
@@ -351,6 +411,74 @@ onUnmounted(() => {
   </div>
 
   <Notification />
+
+  <!-- User Switch Dialog (admin only) -->
+  <el-dialog
+    v-model="showUserSwitch"
+    title="切换用户"
+    width="500px"
+    :close-on-click-modal="true"
+  >
+    <div class="space-y-4">
+      <p class="text-sm text-gray-500">以管理员身份切换到其他用户进行测试。切换后您将获得该用户的权限。</p>
+
+      <!-- Restore admin button -->
+      <button
+        v-if="authStore.isSwitched"
+        @click="restoreAdminFromSwitch"
+        class="w-full px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm"
+      >
+        恢复管理员身份
+      </button>
+
+      <!-- Search input -->
+      <div class="relative">
+        <el-input
+          v-model="switchSearchQuery"
+          placeholder="搜索用户名或昵称..."
+          clearable
+          @input="searchSwitchUsers"
+          @clear="switchSearchResults = []"
+        >
+          <template #prefix>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </template>
+        </el-input>
+      </div>
+
+      <!-- Search results -->
+      <div v-if="switchSearching" class="text-center py-4 text-gray-500">
+        <span class="animate-pulse">搜索中...</span>
+      </div>
+      <div v-else-if="switchSearchResults.length > 0" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <button
+          v-for="u in switchSearchResults"
+          :key="u.id"
+          @click="doSwitchUser(u)"
+          class="w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+        >
+          <div class="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white text-xs font-medium">
+            {{ (u.nickname || u.username || 'U')[0].toUpperCase() }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">{{ u.nickname || u.username }}</p>
+            <p class="text-xs text-gray-500 truncate">@{{ u.username }} · {{ u.role }}</p>
+          </div>
+          <span
+            v-if="u.id === authStore.user?.id"
+            class="text-xs text-green-600 bg-green-50 px-2 py-1 rounded"
+          >
+            当前
+          </span>
+        </button>
+      </div>
+      <div v-else-if="switchSearchQuery" class="text-center py-4 text-gray-400 text-sm">
+        未找到用户
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <style scoped>

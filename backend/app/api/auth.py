@@ -687,3 +687,63 @@ async def get_cas_userinfo(
         "email": current_user.email,
         "auth_source": current_user.auth_source
     }
+
+
+# ============== 管理员切换用户 ==============
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class AdminSwitchUserRequest(PydanticBaseModel):
+    target_user_id: int
+
+
+@router.post("/admin/switch-user")
+async def admin_switch_user(
+    request: AdminSwitchUserRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """管理员切换到指定用户（用于测试）
+
+    仅 admin 角色可用，生成目标用户的 token，但不改变目标用户的登录状态
+    """
+    # 检查是否是管理员
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有管理员可以使用此功能"
+        )
+
+    # 获取目标用户
+    target_user = db.query(User).filter(User.id == request.target_user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+
+    if not target_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="用户已被禁用"
+        )
+
+    # 生成目标用户的 token（带标记，表示是管理员切换）
+    access_token = create_access_token(
+        data={
+            "sub": str(target_user.id),
+            "login_method": "admin_switch",
+            "switched_by": str(current_user.id)
+        }
+    )
+
+    add_log(
+        db, current_user.id, "switch_user", "auth",
+        details=f"管理员 {current_user.username} 切换到用户 {target_user.username}",
+        ip_address=None
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        user=UserResponse.model_validate(target_user)
+    )
