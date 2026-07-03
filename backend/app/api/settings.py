@@ -254,9 +254,9 @@ async def get_registration_status(
 async def get_setting(
     key: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REVIEWER))
+    current_user: User = Depends(get_current_active_user)
 ):
-    """获取单个配置"""
+    """获取单个配置（登录用户可读）"""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
         # 返回默认值

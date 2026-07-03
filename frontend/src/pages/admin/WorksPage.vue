@@ -23,6 +23,8 @@ const teamFilter = ref('')
 const themes = ref<any[]>([])
 const teams = ref<any[]>([])
 const userTeam = ref<any>(null)
+const submissionEnd = ref<string | null>(null)
+const isSubmissionClosed = ref(false)
 
 const showDialog = ref(false)
 const dialogType = ref<'detail' | 'create' | 'edit'>('detail')
@@ -59,6 +61,8 @@ const selectedWorks = ref<Set<number>>(new Set())
 const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const hasTeam = computed(() => !!userTeam.value)
 const canAddWork = computed(() => canAudit.value || hasTeam.value)
+// 普通用户在作品提交截止后不能编辑/删除
+const isUserSubmissionClosed = computed(() => isSubmissionClosed.value && !canAudit.value)
 // 只有已提交过作品但未签署版权协议的用户才需要签署
 const needsCopyrightAgreement = computed(() => {
   if (canAudit.value) return false
@@ -215,6 +219,7 @@ const confirmMessage = ref('')
 const confirmCallback = ref<(() => void) | null>(null)
 
 onMounted(async () => {
+  await fetchSubmissionEnd()
   if (!canAudit.value) {
     await fetchUserTeam()
     await checkCopyrightAgreementStatus()
@@ -224,6 +229,20 @@ onMounted(async () => {
   await fetchWorks()
   await fetchThemes()
 })
+
+async function fetchSubmissionEnd() {
+  try {
+    const res = await api.get('/settings/submission_end')
+    submissionEnd.value = res.data?.value || null
+    if (submissionEnd.value) {
+      const endTime = new Date(submissionEnd.value)
+      isSubmissionClosed.value = new Date() > endTime
+    }
+  } catch (e) {
+    submissionEnd.value = null
+    isSubmissionClosed.value = false
+  }
+}
 
 async function checkCopyrightAgreementStatus() {
   try {
@@ -319,6 +338,12 @@ function openDetail(work: any) {
 }
 
 function openCreate() {
+  // 普通用户在作品提交截止后不能创建
+  if (isSubmissionClosed.value && !canAudit.value) {
+    error('创建失败', '作品提交已截止，无法创建新作品')
+    return
+  }
+
   // 检查是否有已审核通过的队伍
   if (!canAudit.value && userTeam.value && userTeam.value.status !== 'approved') {
     error('创建失败', '您的队伍尚未通过审核，无法提交作品')
@@ -394,6 +419,10 @@ function openCreateAfterAgreement() {
 }
 
 function openEdit(work: any) {
+  if (isUserSubmissionClosed.value) {
+    error('操作失败', '作品提交已截止，无法编辑')
+    return
+  }
   editingWork.value = work
   formData.value = {
     name: work.name,
@@ -478,6 +507,10 @@ async function handleAudit(status: string) {
 }
 
 async function handleDelete(work: any) {
+  if (isUserSubmissionClosed.value) {
+    error('操作失败', '作品提交已截止，无法删除')
+    return
+  }
   confirmMessage.value = `确定删除作品 "${work.name}" 吗？此操作不可恢复。`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -600,9 +633,12 @@ async function handleExport() {
             版权协议签署
           </button>
           <button
-            v-if="canAddWork"
+            :disabled="isSubmissionClosed && !canAudit"
             @click="openCreate"
-            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
+            :class="(isSubmissionClosed && !canAudit)
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-600/20'"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -756,14 +792,21 @@ async function handleExport() {
                 <span class="text-gray-300">|</span>
                 <button
                   v-if="canAudit || work.team_leader_id === authStore.user?.id"
+                  :disabled="isUserSubmissionClosed"
+                  :class="(isUserSubmissionClosed ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-green-600 hover:text-green-700') + ' px-3 py-1.5 text-sm font-medium rounded-lg transition-colors'"
                   @click="openEdit(work)"
-                  class="text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
                   编辑
                 </button>
                 <template v-if="canAudit || work.team_leader_id === authStore.user?.id">
                   <span class="text-gray-300">|</span>
-                  <button @click="handleDelete(work)" class="text-red-600 hover:text-red-700 font-medium transition-colors">删除</button>
+                  <button
+                    :disabled="isUserSubmissionClosed"
+                    :class="(isUserSubmissionClosed ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 hover:text-red-700') + ' px-3 py-1.5 text-sm font-medium rounded-lg transition-colors'"
+                    @click="handleDelete(work)"
+                  >
+                    删除
+                  </button>
                 </template>
               </div>
             </td>
