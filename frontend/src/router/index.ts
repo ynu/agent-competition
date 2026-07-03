@@ -202,41 +202,51 @@ router.beforeEach(async (to, from, next) => {
     await authStore.fetchUser()
   }
 
-  // Check if route requires authentication
-  if (to.meta.requiresAuth) {
-    if (!authStore.isLoggedIn) {
-      next({ name: 'unauthorized' })
-      return
-    }
-    next()
-    return
-  }
+  // 获取所有匹配的路由（包括父路由）用于检查 meta
+  const matchedRoutes = to.matched
 
-  // Check if route requires admin role
-  if (to.meta.requiresAdmin) {
-    if (!authStore.isAdmin) {
-      next({ name: 'unauthorized' })
-      return
+  // Check if route requires authentication (检查所有匹配的路由)
+  for (const route of matchedRoutes) {
+    if (route.meta.requiresAuth) {
+      if (!authStore.isLoggedIn) {
+        next({ name: 'unauthorized' })
+        return
+      }
+      break  // 登录检查通过，继续权限检查
     }
   }
 
-  // Check if route requires specific permissions
-  if (to.meta.requiresPermission) {
-    const requiredPerms = to.meta.requiresPermission as string[]
-    // 空权限数组表示所有登录用户都可访问
-    if (requiredPerms.length > 0 && !authStore.isAdmin) {
-      const hasAnyPermission = requiredPerms.some(p => authStore.hasPermission(p))
-      if (!hasAnyPermission) {
+  // Check if route requires admin role (检查所有匹配的路由)
+  for (const route of matchedRoutes) {
+    if (route.meta.requiresAdmin) {
+      if (!authStore.isAdmin) {
         next({ name: 'unauthorized' })
         return
       }
     }
   }
 
-  // Check if route requires reviewer role (legacy, now use requiresPermission)
-  if (to.meta.requiresReviewer && !authStore.isReviewer && !authStore.isAdmin) {
-    next({ name: 'unauthorized' })
-    return
+  // Check if route requires specific permissions (检查所有匹配的路由)
+  for (const route of matchedRoutes) {
+    if (route.meta.requiresPermission) {
+      const requiredPerms = route.meta.requiresPermission as string[]
+      // 空权限数组表示所有登录用户都可访问
+      if (requiredPerms.length > 0 && !authStore.isAdmin) {
+        const hasAnyPermission = requiredPerms.some(p => authStore.hasPermission(p))
+        if (!hasAnyPermission) {
+          next({ name: 'unauthorized' })
+          return
+        }
+      }
+    }
+  }
+
+  // Check if route requires reviewer role (检查所有匹配的路由)
+  for (const route of matchedRoutes) {
+    if (route.meta.requiresReviewer && !authStore.isReviewer && !authStore.isAdmin) {
+      next({ name: 'unauthorized' })
+      return
+    }
   }
 
   // Redirect to dashboard if already logged in and trying to access login
