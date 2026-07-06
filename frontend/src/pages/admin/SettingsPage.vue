@@ -36,6 +36,17 @@ const detailWork = ref<any>(null)
 const showDetailDialog = ref(false)
 const clearingData = ref(false)
 
+// LLM Configuration
+const activeTab = ref('general')
+const showApiKey = ref(false)
+const llmConfig = ref({
+  enabled: false,
+  base_url: '',
+  api_key: '',
+  model: '',
+  prompt: ''
+})
+
 const formData = ref<Record<string, string>>({})
 
 // 检查是否为版权协议配置
@@ -81,7 +92,7 @@ const settingDescriptions: Record<string, { label: string; desc: string; type: s
 }
 
 onMounted(async () => {
-  await Promise.all([fetchSettings(), fetchThemes()])
+  await Promise.all([fetchSettings(), fetchThemes(), loadLlmConfig()])
 })
 
 async function fetchSettings() {
@@ -257,6 +268,35 @@ async function handleClearData() {
     }
   }
 }
+
+async function loadLlmConfig() {
+  try {
+    const keys = ['llm_enabled', 'llm_base_url', 'llm_api_key', 'llm_model', 'llm_prompt']
+    const results = await Promise.all(keys.map(key => api.get(`/settings/${key}`)))
+    llmConfig.value = {
+      enabled: results[0].data?.value === 'true',
+      base_url: results[1].data?.value || 'https://api.openai.com/v1',
+      api_key: results[2].data?.value || '',
+      model: results[3].data?.value || 'gpt-4o-mini',
+      prompt: results[4].data?.value || ''
+    }
+  } catch (e: any) {
+    console.error('Failed to load LLM config:', e)
+  }
+}
+
+async function saveLlmConfig() {
+  try {
+    await api.put('/settings/llm_enabled', { value: String(llmConfig.value.enabled) })
+    await api.put('/settings/llm_base_url', { value: llmConfig.value.base_url })
+    await api.put('/settings/llm_api_key', { value: llmConfig.value.api_key })
+    await api.put('/settings/llm_model', { value: llmConfig.value.model })
+    await api.put('/settings/llm_prompt', { value: llmConfig.value.prompt })
+    success('LLM 配置保存成功')
+  } catch (e: any) {
+    error('保存失败', e.response?.data?.detail)
+  }
+}
 </script>
 
 <template>
@@ -285,8 +325,131 @@ async function handleClearData() {
       </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 mb-6 inline-flex">
+      <button
+        @click="activeTab = 'general'"
+        class="px-6 py-2.5 rounded-xl font-medium text-sm transition-all"
+        :class="activeTab === 'general' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'"
+      >
+        通用配置
+      </button>
+      <button
+        @click="activeTab = 'llm'"
+        class="px-6 py-2.5 rounded-xl font-medium text-sm transition-all"
+        :class="activeTab === 'llm' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'"
+      >
+        LLM 配置
+      </button>
+    </div>
+
+    <!-- LLM Configuration Tab -->
+    <div v-if="activeTab === 'llm'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        LLM 配置
+      </h2>
+      <p class="text-sm text-gray-500 mb-6">配置大语言模型 API 用于智能评审等功能</p>
+
+      <div class="space-y-6 max-w-2xl">
+        <!-- Enabled Toggle -->
+        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <div class="relative">
+              <input v-model="llmConfig.enabled" type="checkbox" class="sr-only peer" />
+              <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+              <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform peer-checked:translate-x-5"></div>
+            </div>
+            <span class="font-medium text-gray-700">启用 LLM 功能</span>
+          </label>
+        </div>
+
+        <!-- Base URL -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Base URL <span class="text-red-500">*</span>
+          </label>
+          <input
+            v-model="llmConfig.base_url"
+            type="text"
+            placeholder="https://api.openai.com/v1"
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
+          <p class="text-xs text-gray-500 mt-1">LLM API 的基础地址，如 OpenAI、Claude 等</p>
+        </div>
+
+        <!-- API Key -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            API Key <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <input
+              v-model="llmConfig.api_key"
+              :type="showApiKey ? 'text' : 'password'"
+              placeholder="sk-..."
+              class="w-full px-4 py-2.5 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+            <button
+              type="button"
+              @click="showApiKey = !showApiKey"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <svg v-if="!showApiKey" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Model -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Model <span class="text-red-500">*</span>
+          </label>
+          <input
+            v-model="llmConfig.model"
+            type="text"
+            placeholder="gpt-4o-mini"
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
+          <p class="text-xs text-gray-500 mt-1">使用的模型名称，如 gpt-4o-mini、claude-3-haiku 等</p>
+        </div>
+
+        <!-- Prompt -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            System Prompt
+          </label>
+          <textarea
+            v-model="llmConfig.prompt"
+            rows="5"
+            placeholder="你是一个专业的评审专家，请根据以下标准对参赛作品进行评分和评价..."
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-y"
+          ></textarea>
+          <p class="text-xs text-gray-500 mt-1">用于评审的系统提示词，支持变量: {work_name}, {work_description}, {team_name}</p>
+        </div>
+
+        <!-- Save Button -->
+        <div class="flex justify-end pt-4">
+          <button
+            @click="saveLlmConfig"
+            class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
+          >
+            保存配置
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- System Settings -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div v-if="activeTab === 'general'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
       <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -354,7 +517,7 @@ async function handleClearData() {
     </div>
 
     <!-- Competition Themes -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div v-if="activeTab === 'general'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

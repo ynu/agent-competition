@@ -58,6 +58,134 @@ const fieldErrors = ref<Record<string, string>>({
 // 多选状态
 const selectedWorks = ref<Set<number>>(new Set())
 
+// LLM检测进度
+const showLlmProgressDialog = ref(false)
+const llmCheckProgress = ref({
+  total: 0,
+  current: 0,
+  success: 0,
+  failed: 0,
+  isRunning: false
+})
+
+// LLM检测结果标签
+function getLlmResultLabel(result: string | undefined): string {
+  if (!result) return '未检测'
+  const labels: Record<string, string> = {
+    'pass': '通过',
+    'suspicious': '可疑',
+    'fail': '失败',
+    'skip': '跳过',
+    'error': '错误'
+  }
+  return labels[result] || result
+}
+
+function getLlmResultClass(result: string | undefined): string {
+  if (!result) return 'bg-gray-100 text-gray-500'
+  const classes: Record<string, string> = {
+    'pass': 'bg-green-100 text-green-700',
+    'suspicious': 'bg-amber-100 text-amber-700',
+    'fail': 'bg-red-100 text-red-700',
+    'skip': 'bg-gray-100 text-gray-500',
+    'error': 'bg-red-100 text-red-700'
+  }
+  return classes[result] || 'bg-gray-100 text-gray-500'
+}
+
+function formatLlmDetail(detail: string | undefined): string {
+  if (!detail) return ''
+  // 尝试解析JSON并格式化
+  try {
+    const parsed = JSON.parse(detail)
+    if (typeof parsed === 'object') {
+      return JSON.stringify(parsed, null, 2)
+    }
+    return detail
+  } catch {
+    return detail
+  }
+}
+
+// 批量LLM检测
+async function handleBatchLlmCheck() {
+  if (selectedWorks.value.size === 0) return
+
+  confirmTitle.value = 'LLM检测'
+  confirmType.value = 'info'
+  confirmMessage.value = `确定对选中的 ${selectedWorks.value.size} 个作品进行LLM检测吗？`
+  showConfirm.value = true
+  confirmCallback.value = async () => {
+    llmCheckProgress.value = {
+      total: selectedWorks.value.size,
+      current: 0,
+      success: 0,
+      failed: 0,
+      isRunning: true
+    }
+    showLlmProgressDialog.value = true
+
+    const workIds = Array.from(selectedWorks.value)
+    let successCount = 0
+    let failCount = 0
+
+    for (const workId of workIds) {
+      llmCheckProgress.value.current++
+      try {
+        await api.post(`/works/${workId}/llm-check`)
+        successCount++
+        llmCheckProgress.value.success++
+      } catch (e: any) {
+        failCount++
+        llmCheckProgress.value.failed++
+      }
+    }
+
+    llmCheckProgress.value.isRunning = false
+    clearSelection()
+    await fetchWorks()
+
+    if (failCount === 0) {
+      success(`LLM检测完成`, `成功检测 ${successCount} 个作品`)
+    } else {
+      error(`LLM检测完成`, `成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
+  }
+}
+
+// LLM检测详情是否展开
+const llmDetailExpanded = ref(false)
+
+// 单个LLM检测
+async function handleSingleLlmCheck(work: any, event: Event) {
+  event.stopPropagation()
+  try {
+    await api.post(`/works/${work.id}/llm-check`)
+    success('检测成功')
+    await fetchWorks()
+  } catch (e: any) {
+    error('检测失败', e.response?.data?.detail || '未知错误')
+  }
+}
+
+// 详情页立即检测
+async function handleDetailLlmCheck() {
+  if (!editingWork.value) return
+  try {
+    await api.post(`/works/${editingWork.value.id}/llm-check`)
+    success('检测成功')
+    // 更新当前详情数据
+    const idx = works.value.findIndex(w => w.id === editingWork.value.id)
+    if (idx !== -1) {
+      editingWork.value = { ...works.value[idx] }
+    } else {
+      await fetchWorks()
+    }
+  } catch (e: any) {
+    error('检测失败', e.response?.data?.detail || '未知错误')
+  }
+}
+
 const canAudit = computed(() => authStore.isAdmin || authStore.isReviewer)
 const hasTeam = computed(() => !!userTeam.value)
 const canAddWork = computed(() => canAudit.value || hasTeam.value)
@@ -99,6 +227,9 @@ function clearSelection() {
 // 批量删除
 async function handleBatchDelete() {
   if (selectedWorks.value.size === 0) return
+
+  confirmTitle.value = '批量删除'
+  confirmType.value = 'danger'
   confirmMessage.value = `确定删除选中的 ${selectedWorks.value.size} 个作品吗？此操作不可恢复。`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -125,6 +256,9 @@ async function handleBatchDelete() {
 // 批量审核
 async function handleBatchAudit(status: string) {
   if (selectedWorks.value.size === 0) return
+
+  confirmTitle.value = status === 'approved' ? '批量通过' : '批量拒绝'
+  confirmType.value = status === 'approved' ? 'info' : 'warning'
   confirmMessage.value = `确定将选中的 ${selectedWorks.value.size} 个作品审核${status === 'approved' ? '通过' : '拒绝'}吗？`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -217,6 +351,8 @@ function handleBlur(field: string) {
 const showConfirm = ref(false)
 const confirmMessage = ref('')
 const confirmCallback = ref<(() => void) | null>(null)
+const confirmTitle = ref('确认操作')
+const confirmType = ref<'danger' | 'warning' | 'info'>('info')
 
 onMounted(async () => {
   await fetchSubmissionEnd()
@@ -511,6 +647,9 @@ async function handleDelete(work: any) {
     error('操作失败', '作品提交已截止，无法删除')
     return
   }
+
+  confirmTitle.value = '确认删除'
+  confirmType.value = 'danger'
   confirmMessage.value = `确定删除作品 "${work.name}" 吗？此操作不可恢复。`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -610,6 +749,13 @@ async function handleExport() {
               class="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
             >
               批量拒绝
+            </button>
+            <button
+              @click="handleBatchLlmCheck"
+              :disabled="llmCheckProgress.isRunning"
+              class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              LLM检测
             </button>
             <button
               @click="handleBatchDelete"
@@ -734,6 +880,7 @@ async function handleExport() {
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">队长学工号</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">主题</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">投票</th>
+            <th v-if="canAudit" class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">LLM检测</th>
             <th v-if="authStore.isAdmin" class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">版权协议</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
@@ -769,6 +916,18 @@ async function handleExport() {
                 </svg>
                 {{ work.vote_count }}
               </div>
+            </td>
+            <td v-if="canAudit" class="px-4 py-4 text-sm">
+              <span :class="getLlmResultClass(work.llm_result)" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
+                {{ getLlmResultLabel(work.llm_result) }}
+              </span>
+              <button
+                @click="handleSingleLlmCheck(work, $event)"
+                :disabled="llmCheckProgress.isRunning"
+                class="ml-2 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                检测
+              </button>
             </td>
             <td v-if="authStore.isAdmin" class="px-4 py-4 text-sm">
               <span
@@ -948,6 +1107,45 @@ async function handleExport() {
           <div class="bg-gray-50 rounded-xl p-4">
             <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">评分</label>
             <p class="text-gray-800 font-medium mt-1">{{ editingWork?.score?.toFixed(1) || '暂无' }}</p>
+          </div>
+        </div>
+
+        <div v-if="canAudit" class="bg-gray-50 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">LLM检测</label>
+            <button
+              @click="handleDetailLlmCheck"
+              :disabled="llmCheckProgress.isRunning"
+              class="px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              立即检测
+            </button>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div class="flex items-center gap-3">
+              <span :class="getLlmResultClass(editingWork?.llm_result)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+                {{ getLlmResultLabel(editingWork?.llm_result) }}
+              </span>
+              <span v-if="editingWork?.llm_checked_at" class="text-xs text-gray-400">
+                检测时间: {{ new Date(editingWork.llm_checked_at).toLocaleString() }}
+              </span>
+            </div>
+            <div v-if="editingWork?.llm_result_detail" class="mt-3">
+              <button
+                @click="llmDetailExpanded = !llmDetailExpanded"
+                class="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg
+                  :class="llmDetailExpanded ? 'rotate-90' : ''"
+                  class="w-3 h-3 transition-transform"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                检测详情
+              </button>
+              <pre v-if="llmDetailExpanded" class="mt-2 p-3 bg-white rounded-lg text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">{{ formatLlmDetail(editingWork?.llm_result_detail) }}</pre>
+            </div>
           </div>
         </div>
 
@@ -1147,11 +1345,11 @@ async function handleExport() {
     <!-- Confirm Dialog -->
     <ConfirmDialog
       :show="showConfirm"
-      title="确认删除"
+      :title="confirmTitle"
       :message="confirmMessage"
-      confirm-text="删除"
+      :type="confirmType"
+      confirm-text="确定"
       cancel-text="取消"
-      type="danger"
       @confirm="() => { if (confirmCallback) confirmCallback(); showConfirm = false }"
       @cancel="showConfirm = false"
       @close="showConfirm = false"
@@ -1191,5 +1389,52 @@ async function handleExport() {
       @update:visible="showCopyrightDialog = $event"
       @agreed="openCreateAfterAgreement"
     />
+
+    <!-- LLM检测进度对话框 -->
+    <Dialog
+      :show="showLlmProgressDialog"
+      title="LLM检测进度"
+      subtitle="正在批量检测作品"
+      width="md"
+      @close="showLlmProgressDialog = false"
+    >
+      <div class="p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600">进度</span>
+          <span class="text-sm font-medium text-gray-800">
+            {{ llmCheckProgress.current }} / {{ llmCheckProgress.total }}
+          </span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div
+            class="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+            :style="{ width: llmCheckProgress.total > 0 ? `${(llmCheckProgress.current / llmCheckProgress.total) * 100}%` : '0%' }"
+          ></div>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-green-600">成功: {{ llmCheckProgress.success }}</span>
+          <span class="text-red-600">失败: {{ llmCheckProgress.failed }}</span>
+        </div>
+        <div v-if="!llmCheckProgress.isRunning" class="text-center text-sm text-gray-500 pt-2">
+          检测完成
+        </div>
+        <div v-else class="flex items-center justify-center gap-2 text-sm text-blue-600 pt-2">
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          检测中...
+        </div>
+        <div class="flex justify-end gap-3 pt-4">
+          <button
+            v-if="!llmCheckProgress.isRunning"
+            @click="showLlmProgressDialog = false"
+            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </Dialog>
   </div>
 </template>

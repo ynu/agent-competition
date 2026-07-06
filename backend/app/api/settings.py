@@ -57,6 +57,25 @@ DEFAULT_SETTINGS = {
 5. 参赛者提交作品即视为已充分知悉并同意上述全部条款。
 
 我郑重承诺以上内容真实有效，并愿意承担相应的法律责任。""", "description": "Copyright agreement content (Markdown format)", "sort_order": 70},
+    # ========== LLM内容检测 ==========
+    "llm_enabled": {"value": "false", "description": "Enable LLM content detection", "sort_order": 75},
+    "llm_base_url": {"value": "https://api.openai.com/v1", "description": "LLM API Base URL", "sort_order": 76},
+    "llm_api_key": {"value": "", "description": "LLM API Key", "sort_order": 77},
+    "llm_model": {"value": "gpt-4o-mini", "description": "LLM Model name", "sort_order": 78},
+    "llm_prompt": {"value": """请检测以下作品内容是否合规。
+
+作品名称：{name}
+作品描述：{description}
+智能体URL：{agent_url}
+编排URL：{agent_editor_url}
+队伍名称：{team_name}
+主题：{theme_name}
+
+请返回JSON格式结果：
+{
+  "result": "pass|suspicious|fail",
+  "reason": "简要说明"
+}""", "description": "LLM detection prompt template", "sort_order": 79},
 }
 
 

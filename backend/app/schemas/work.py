@@ -54,6 +54,9 @@ class WorkResponse(BaseModel):
     updated_at: datetime
     theme_name: Optional[str] = None
     team_leader_id: Optional[int] = None  # 队长ID，用于前端权限判断
+    llm_result: Optional[str] = None
+    llm_result_detail: Optional[str] = None
+    llm_checked_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

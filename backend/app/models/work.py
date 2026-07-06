@@ -32,6 +32,9 @@ class Work(Base):
     view_count = Column(Integer, default=0, comment="浏览次数")
     score = Column(Float, nullable=True, comment="评审分数")
     status = Column(SQLEnum(WorkStatus), default=WorkStatus.PENDING, comment="状态")
+    llm_result = Column(String(20), nullable=True, comment="LLM检测结果：pass/suspicious/fail/null")
+    llm_result_detail = Column(Text, nullable=True, comment="LLM检测详细结果JSON")
+    llm_checked_at = Column(DateTime, nullable=True, comment="LLM检测时间")
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 

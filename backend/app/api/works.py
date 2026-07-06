@@ -3,7 +3,8 @@
 """
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_optional, require_role, get_user_from_token
@@ -11,7 +12,7 @@ from app.core.config import settings
 from app.models.user import User, UserRole
 from app.models.team import Team, TeamMember, TeamStatus
 from app.models.work import Work, Review, Vote, WorkStatus
-from app.models.setting import Log, CompetitionTheme
+from app.models.setting import Log, CompetitionTheme, Setting
 from app.schemas.work import (
     WorkCreate, WorkUpdate, WorkResponse, WorkDetailResponse,
     ReviewCreate, ReviewUpdate, ReviewResponse, VoteRequest,
@@ -19,6 +20,7 @@ from app.schemas.work import (
 )
 from app.schemas.common import PageResponse
 from app.services.webhook import trigger_webhook_and_notification
+from app.services.llm import check_llm_enabled
 from app.models.webhook import WebhookEventType
 from app.models.work import CopyrightAgreement
 import os
@@ -1072,3 +1074,162 @@ async def export_works(
         )
     except ImportError:
         raise HTTPException(status_code=500, detail="Excel导出功能需要安装 openpyxl")
+
+
+# ========== LLM检测相关Schema和接口 ==========
+
+class LLMCheckRequest(BaseModel):
+    work_ids: List[int] = Field(..., min_length=1, max_length=100)
+
+
+class LLMCheckResponse(BaseModel):
+    work_id: int
+    result: str
+    reason: str
+    detail: Optional[str] = None
+    error: Optional[str] = None
+
+
+class LLMBatchCheckResponse(BaseModel):
+    total: int
+    success: int
+    failed: int
+    results: List[LLMCheckResponse]
+
+
+def get_work_with_team_info(db: Session, work: Work) -> dict:
+    """获取作品及其队伍信息"""
+    team = work.team
+    theme_name = work.theme_obj.name if work.theme_obj else ""
+    return {
+        "id": work.id,
+        "name": work.name,
+        "description": work.description or "",
+        "agent_url": work.agent_url or "",
+        "agent_editor_url": work.agent_editor_url or "",
+        "team_name": team.name if team else "",
+        "theme_name": theme_name,
+    }
+
+
+@router.post("/{work_id}/llm-check")
+async def check_single_work_llm(
+    work_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """单个作品LLM检测接口"""
+    # 检查权限
+    if current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
+        raise HTTPException(status_code=403, detail="权限不足，需要管理员或审核员权限")
+
+    # 检查LLM是否启用
+    if not check_llm_enabled(db):
+        raise HTTPException(status_code=400, detail="LLM检测未启用")
+
+    # 获取作品信息
+    work = db.query(Work).filter(Work.id == work_id).first()
+    if not work:
+        raise HTTPException(status_code=404, detail="作品不存在")
+
+    # 获取作品详细信息
+    work_data = get_work_with_team_info(db, work)
+
+    # 调用LLM检测
+    from app.services.llm import detect_work_content
+    result = await detect_work_content(db, work_data)
+
+    # 更新作品记录
+    work.llm_result = result.get("result", "error")
+    work.llm_result_detail = result.get("reason", "")
+    work.llm_checked_at = datetime.utcnow()
+    db.commit()
+
+    # 记录日志
+    add_log(db, current_user.id, "llm_check", "work", work_id, f"LLM检测: {work.name}, 结果: {result.get('result')}")
+
+    return {
+        "work_id": work_id,
+        "result": result.get("result", "error"),
+        "reason": result.get("reason", ""),
+        "detail": result.get("detail"),
+        "error": result.get("error")
+    }
+
+
+@router.post("/batch-llm-check", response_model=LLMBatchCheckResponse)
+async def batch_check_works_llm(
+    request_data: LLMCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """批量检测作品LLM接口"""
+    # 检查权限
+    if current_user.role not in [UserRole.ADMIN, UserRole.REVIEWER]:
+        raise HTTPException(status_code=403, detail="权限不足，需要管理员或审核员权限")
+
+    # 检查LLM是否启用
+    if not check_llm_enabled(db):
+        raise HTTPException(status_code=400, detail="LLM检测未启用")
+
+    from app.services.llm import detect_work_content
+
+    total = len(request_data.work_ids)
+    success = 0
+    failed = 0
+    results: List[LLMCheckResponse] = []
+
+    # 串行检测每个作品
+    for work_id in request_data.work_ids:
+        work = db.query(Work).filter(Work.id == work_id).first()
+
+        if not work:
+            results.append(LLMCheckResponse(
+                work_id=work_id,
+                result="error",
+                reason="作品不存在",
+                error="Not found"
+            ))
+            failed += 1
+            continue
+
+        try:
+            # 获取作品详细信息
+            work_data = get_work_with_team_info(db, work)
+
+            # 调用LLM检测
+            result = await detect_work_content(db, work_data)
+
+            # 更新作品记录
+            work.llm_result = result.get("result", "error")
+            work.llm_result_detail = result.get("reason", "")
+            work.llm_checked_at = datetime.utcnow()
+            db.commit()
+
+            results.append(LLMCheckResponse(
+                work_id=work_id,
+                result=result.get("result", "error"),
+                reason=result.get("reason", ""),
+                detail=result.get("detail"),
+                error=result.get("error")
+            ))
+            success += 1
+
+            # 记录日志
+            add_log(db, current_user.id, "llm_check", "work", work_id, f"批量LLM检测: {work.name}, 结果: {result.get('result')}")
+
+        except Exception as e:
+            results.append(LLMCheckResponse(
+                work_id=work_id,
+                result="error",
+                reason=f"检测异常: {str(e)}",
+                error=str(e)
+            ))
+            failed += 1
+
+    return LLMBatchCheckResponse(
+        total=total,
+        success=success,
+        failed=failed,
+        results=results
+    )
