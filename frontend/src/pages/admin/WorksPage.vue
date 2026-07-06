@@ -863,7 +863,8 @@ async function handleExport() {
           <option value="">全部检测</option>
           <option value="pass">通过</option>
           <option value="suspicious">可疑</option>
-          <option value="fail">错误</option>
+          <option value="fail">失败</option>
+          <option value="error">错误</option>
         </select>
         <button
           @click="handleSearch"
