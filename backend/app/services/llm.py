@@ -91,7 +91,7 @@ async def call_llm(
     api_key: str,
     model: str,
     prompt: str,
-    timeout: float = 30.0
+    timeout: float = 60.0
 ) -> str:
     """调用LLM API"""
     if not api_key:
@@ -192,7 +192,7 @@ def detect_work_content_sync(db: Session, work_data: Dict[str, Any]) -> Dict[str
     config = get_llm_config(db)
 
     try:
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=60.0) as client:
             base_url = config["base_url"]
             if not base_url.endswith("/"):
                 base_url += "/"
