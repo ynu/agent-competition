@@ -20,6 +20,7 @@ const pageSize = 20
 const statusFilter = ref('')
 const keyword = ref('')
 const teamFilter = ref('')
+const llmResultFilter = ref('')
 const themes = ref<any[]>([])
 const teams = ref<any[]>([])
 const userTeam = ref<any>(null)
@@ -421,7 +422,8 @@ async function fetchWorks() {
         page_size: pageSize,
         status: statusFilter.value || undefined,
         keyword: keyword.value || undefined,
-        team_name: teamFilter.value || undefined
+        team_name: teamFilter.value || undefined,
+        llm_result: llmResultFilter.value || undefined
       }
     })
     works.value = res.data.items || []
@@ -720,6 +722,7 @@ async function handleExport() {
   if (statusFilter.value) params.status = statusFilter.value
   if (keyword.value) params.keyword = keyword.value
   if (teamFilter.value) params.team_name = teamFilter.value
+  if (llmResultFilter.value) params.llm_result = llmResultFilter.value
   const url = workApi.exportWorks(params)
   window.open(url, '_blank')
 }
@@ -850,6 +853,17 @@ async function handleExport() {
           <option value="pending">待审核</option>
           <option value="approved">已通过</option>
           <option value="rejected">已拒绝</option>
+        </select>
+        <select
+          v-if="canAudit"
+          v-model="llmResultFilter"
+          class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white min-w-[140px]"
+          @change="handleSearch"
+        >
+          <option value="">全部检测</option>
+          <option value="pass">通过</option>
+          <option value="suspicious">可疑</option>
+          <option value="fail">错误</option>
         </select>
         <button
           @click="handleSearch"

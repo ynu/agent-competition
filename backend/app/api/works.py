@@ -661,6 +661,7 @@ async def get_works_for_admin(
     team_name: Optional[str] = None,
     keyword: Optional[str] = None,
     theme_id: Optional[int] = Query(None, description="主题ID"),
+    llm_result: Optional[str] = Query(None, description="LLM检测结果: ai_generated, human_created, unknown"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -690,6 +691,9 @@ async def get_works_for_admin(
 
     if theme_id:
         query = query.filter(Work.theme_id == theme_id)
+
+    if llm_result:
+        query = query.filter(Work.llm_result == llm_result)
 
     total = query.count()
     works = query.order_by(Work.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
