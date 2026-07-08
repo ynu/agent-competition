@@ -19,7 +19,6 @@ const pageSize = 20
 const typeFilter = ref('')
 const keyword = ref('')
 const publishedFilter = ref('')
-const dragIndex = ref(-1)
 
 // 多选状态
 const selectedContents = ref<Set<number>>(new Set())
@@ -38,6 +37,13 @@ const renderMarkdown = (content: string) => {
 const showConfirm = ref(false)
 const confirmMessage = ref('')
 const confirmCallback = ref<(() => void) | null>(null)
+const confirmTitle = ref('确认操作')
+const confirmType = ref<'danger' | 'warning' | 'info'>('info')
+
+// 排序模式
+const sortMode = ref(false)
+const sortTypeFilter = ref('')
+const sortableContents = ref<any[]>([])
 const editingContent = ref<any>(null)
 const formData = ref({
   title: '',
@@ -80,6 +86,8 @@ function clearSelection() {
 // 批量删除
 async function handleBatchDelete() {
   if (selectedContents.value.size === 0) return
+  confirmTitle.value = '批量删除'
+  confirmType.value = 'danger'
   confirmMessage.value = `确定删除选中的 ${selectedContents.value.size} 个内容吗？此操作不可恢复。`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -106,6 +114,8 @@ async function handleBatchDelete() {
 // 批量发布/取消发布
 async function handleBatchPublish(published: boolean) {
   if (selectedContents.value.size === 0) return
+  confirmTitle.value = published ? '批量发布' : '批量取消发布'
+  confirmType.value = published ? 'info' : 'warning'
   confirmMessage.value = `确定将选中的 ${selectedContents.value.size} 个内容${published ? '发布' : '取消发布'}吗？`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -226,6 +236,8 @@ async function handleSave() {
 }
 
 async function handleDelete(content: any) {
+  confirmTitle.value = '确认删除'
+  confirmType.value = 'danger'
   confirmMessage.value = `确定删除内容 "${content.title}" 吗？此操作不可恢复。`
   showConfirm.value = true
   confirmCallback.value = async () => {
@@ -267,70 +279,7 @@ function getTypeClass(type: string) {
   return map[type] || 'bg-gray-100 text-gray-700'
 }
 
-// Drag and drop sorting
-function onDragStart(index: number) {
-  dragIndex.value = index
-}
-
-function onDragOver(e: DragEvent, index: number) {
-  e.preventDefault()
-  if (dragIndex.value !== index && dragIndex.value !== -1) {
-    const items = document.querySelectorAll('[data-draggable="true"]')
-    items.forEach((item, i) => {
-      if (i === index) {
-        item.classList.add('bg-blue-50', 'border-blue-300')
-      } else {
-        item.classList.remove('bg-blue-50', 'border-blue-300')
-      }
-    })
-  }
-}
-
-async function onDrop(index: number) {
-  if (dragIndex.value !== -1 && dragIndex.value !== index) {
-    const item = contents.value.splice(dragIndex.value, 1)[0]
-    contents.value.splice(index, 0, item)
-    // Save new order to backend
-    try {
-      await api.put('/contents/reorder', {
-        content_ids: contents.value.map((c: any) => c.id)
-      })
-      success('排序已更新')
-    } catch (e: any) {
-      error('保存排序失败', e.response?.data?.detail)
-      await fetchContents()
-    }
-  }
-  dragIndex.value = -1
-}
-
-function onDragEnd() {
-  dragIndex.value = -1
-}
-
-async function updateContentOrder(content: any, newOrder: number) {
-  try {
-    await api.put(`/contents/${content.id}`, { order: newOrder })
-    success('排序已更新')
-    await fetchContents()
-  } catch (e: any) {
-    error('更新失败', e.response?.data?.detail)
-  }
-}
-
-function moveUp(content: any, index: number) {
-  if (index > 0) {
-    const newOrder = contents.value[index - 1].order + 1
-    updateContentOrder(content, newOrder)
-  }
-}
-
-function moveDown(content: any, index: number) {
-  if (index < contents.value.length - 1) {
-    const newOrder = contents.value[index + 1].order - 1
-    updateContentOrder(content, newOrder)
-  }
-}
+// Drag and drop sorting (已弃用，使用独立排序模式)
 
 function openFileSelector(mode: 'image' | 'file') {
   fileSelectorMode.value = mode
@@ -354,6 +303,89 @@ function handleFileSelected(result: { path: string; url: string }) {
     formData.value.content += `\n${prefix}[${result.path}](${result.url})\n`
   }
   showFileSelector.value = false
+}
+
+// 排序相关
+function openSortMode() {
+  // 获取当前筛选类型的内容用于排序
+  fetchContentsForSort()
+  sortMode.value = true
+}
+
+async function fetchContentsForSort() {
+  try {
+    const res = await api.get('/contents', {
+      params: {
+        page: 1,
+        page_size: 100,
+        is_published: true,
+        type: sortTypeFilter.value || undefined
+      }
+    })
+    sortableContents.value = res.data.items || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function saveSortOrder() {
+  try {
+    await api.put('/contents/reorder', {
+      content_ids: sortableContents.value.map((c: any) => c.id)
+    })
+    success('排序已保存')
+    sortMode.value = false
+    await fetchContents()
+  } catch (e: any) {
+    error('保存失败', e.response?.data?.detail)
+  }
+}
+
+function cancelSortMode() {
+  sortMode.value = false
+  sortableContents.value = []
+}
+
+// 拖拽排序
+const sortDragIndex = ref(-1)
+
+function onSortDragStart(index: number) {
+  sortDragIndex.value = index
+}
+
+function onSortDragOver(e: DragEvent, index: number) {
+  e.preventDefault()
+  if (sortDragIndex.value !== index && sortDragIndex.value !== -1) {
+    const draggedItem = sortableContents.value[sortDragIndex.value]
+    sortableContents.value.splice(sortDragIndex.value, 1)
+    sortableContents.value.splice(index, 0, draggedItem)
+    sortDragIndex.value = index
+  }
+}
+
+function onSortDrop(index: number) {
+  sortDragIndex.value = -1
+}
+
+function onSortDragEnd() {
+  sortDragIndex.value = -1
+}
+
+// 上下移动
+function sortMoveUp(index: number) {
+  if (index > 0) {
+    const temp = sortableContents.value[index]
+    sortableContents.value[index] = sortableContents.value[index - 1]
+    sortableContents.value[index - 1] = temp
+  }
+}
+
+function sortMoveDown(index: number) {
+  if (index < sortableContents.value.length - 1) {
+    const temp = sortableContents.value[index]
+    sortableContents.value[index] = sortableContents.value[index + 1]
+    sortableContents.value[index + 1] = temp
+  }
 }
 </script>
 
@@ -400,6 +432,15 @@ function handleFileSelected(result: { path: string; url: string }) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
             创建内容
+          </button>
+          <button
+            @click="openSortMode"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-600/20 font-medium"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+            排序
           </button>
         </div>
       </div>
@@ -459,7 +500,7 @@ function handleFileSelected(result: { path: string; url: string }) {
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
             </th>
-            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">排序</th>
+            <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">排序值</th>
             <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">标题</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">状态</th>
@@ -470,17 +511,8 @@ function handleFileSelected(result: { path: string; url: string }) {
           <tr
             v-for="(content, index) in contents"
             :key="content.id"
-            :class="[
-              selectedContents.has(content.id) ? 'bg-blue-50/50' : 'hover:bg-blue-50/50',
-              dragIndex === index ? 'bg-blue-50 border-blue-300' : ''
-            ]"
+            :class="selectedContents.has(content.id) ? 'bg-blue-50/50' : 'hover:bg-blue-50/50'"
             class="transition-colors"
-            data-draggable="true"
-            draggable="true"
-            @dragstart="onDragStart(index)"
-            @dragover="onDragOver($event, index)"
-            @drop="onDrop(index)"
-            @dragend="onDragEnd"
           >
             <td class="px-4 py-4">
               <input
@@ -490,21 +522,7 @@ function handleFileSelected(result: { path: string; url: string }) {
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
             </td>
-            <td class="px-4 py-4">
-              <div class="flex items-center gap-1">
-                <button @click="moveUp(content, index)" :disabled="index === 0" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                  </svg>
-                </button>
-                <span class="text-xs text-gray-400 w-6 text-center">{{ index + 1 }}</span>
-                <button @click="moveDown(content, index)" :disabled="index === contents.length - 1" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                  </svg>
-                </button>
-              </div>
-            </td>
+            <td class="px-4 py-4 text-xs text-gray-400">{{ content.order || 0 }}</td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ content.id }}</td>
             <td class="px-6 py-4 text-sm text-gray-800 font-medium">
               <button @click="openEdit(content)" class="text-left hover:text-blue-600 hover:underline">
@@ -763,15 +781,89 @@ function handleFileSelected(result: { path: string; url: string }) {
     <!-- Confirm Dialog -->
     <ConfirmDialog
       :show="showConfirm"
-      title="确认删除"
+      :title="confirmTitle"
       :message="confirmMessage"
-      confirm-text="删除"
+      :type="confirmType"
+      confirm-text="确定"
       cancel-text="取消"
-      type="danger"
       @confirm="() => { if (confirmCallback) confirmCallback(); showConfirm = false }"
       @cancel="showConfirm = false"
       @close="showConfirm = false"
     />
+
+    <!-- Sort Mode Dialog -->
+    <Dialog
+      :show="sortMode"
+      title="内容排序"
+      subtitle="拖拽调整顺序，保存后生效"
+      width="lg"
+      @close="cancelSortMode"
+    >
+      <div class="p-4">
+        <div class="mb-4">
+          <select
+            v-model="sortTypeFilter"
+            class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white min-w-[200px]"
+            @change="fetchContentsForSort"
+          >
+            <option value="">全部类型</option>
+            <option value="page">课程资料</option>
+            <option value="category">栏目</option>
+            <option value="article">新闻资讯</option>
+          </select>
+          <span class="ml-2 text-sm text-gray-500">（排序仅针对同类型内容）</span>
+        </div>
+        <div class="border border-gray-200 rounded-xl max-h-[400px] overflow-y-auto">
+          <div
+            v-for="(content, index) in sortableContents"
+            :key="content.id"
+            :class="sortDragIndex === index ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'"
+            class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 cursor-move transition-colors"
+            draggable="true"
+            @dragstart="onSortDragStart(index)"
+            @dragover="onSortDragOver($event, index)"
+            @drop="onSortDrop(index)"
+            @dragend="onSortDragEnd"
+          >
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button @click.stop="sortMoveUp(index)" :disabled="index === 0" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                </svg>
+              </button>
+              <span class="w-8 h-6 bg-gray-100 rounded text-center text-xs font-medium text-gray-600 leading-6">{{ index + 1 }}</span>
+              <button @click.stop="sortMoveDown(index)" :disabled="index === sortableContents.length - 1" class="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <span :class="getTypeClass(content.type)" class="px-2 py-0.5 rounded text-xs font-medium flex-shrink-0">
+              {{ getTypeLabel(content.type) }}
+            </span>
+            <span class="text-sm font-medium text-gray-900 truncate">{{ content.title }}</span>
+            <span class="text-xs text-gray-400 flex-shrink-0">ID: {{ content.id }}</span>
+          </div>
+          <div v-if="sortableContents.length === 0" class="text-center py-8 text-gray-400">
+            暂无内容
+          </div>
+        </div>
+      </div>
+      <div class="px-4 py-3 bg-gray-50 flex justify-end gap-3">
+        <button
+          @click="cancelSortMode"
+          class="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-100 font-medium text-gray-700 transition-colors"
+        >
+          取消
+        </button>
+        <button
+          @click="saveSortOrder"
+          class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-600/20 font-medium"
+        >
+          保存排序
+        </button>
+      </div>
+    </Dialog>
 
     <!-- File Selector -->
     <FileSelector

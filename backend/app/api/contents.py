@@ -194,7 +194,7 @@ async def get_content_by_slug(
     return ContentResponse.model_validate(content)
 
 
-@router.get("/{content_id}", response_model=ContentResponse)
+@router.get("/{content_id:int}", response_model=ContentResponse)
 async def get_content(
     content_id: int,
     db: Session = Depends(get_db),
@@ -269,7 +269,7 @@ async def create_content(
     return response
 
 
-@router.put("/{content_id}", response_model=ContentResponse)
+@router.put("/{content_id:int}", response_model=ContentResponse)
 async def update_content(
     content_id: int,
     content_data: ContentUpdate,
@@ -310,7 +310,7 @@ async def update_content(
     return response
 
 
-@router.delete("/{content_id}")
+@router.delete("/{content_id:int}")
 async def delete_content(
     content_id: int,
     db: Session = Depends(get_db),
