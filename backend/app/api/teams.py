@@ -122,7 +122,7 @@ async def get_teams(
     )
 
 
-@router.get("/{team_id}", response_model=TeamResponse)
+@router.get("/{team_id:int}", response_model=TeamResponse)
 async def get_team(
     team_id: int,
     db: Session = Depends(get_db),
@@ -243,7 +243,7 @@ async def create_team(
     return team_response
 
 
-@router.put("/{team_id}", response_model=TeamResponse)
+@router.put("/{team_id:int}", response_model=TeamResponse)
 async def update_team(
     team_id: int,
     team_data: TeamUpdate,
@@ -331,7 +331,7 @@ async def update_team(
     return team_response
 
 
-@router.delete("/{team_id}")
+@router.delete("/{team_id:int}")
 async def delete_team(
     team_id: int,
     db: Session = Depends(get_db),
@@ -390,7 +390,7 @@ async def delete_team(
     return {"message": "删除成功"}
 
 
-@router.post("/{team_id}/join", response_model=TeamResponse)
+@router.post("/{team_id:int}/join", response_model=TeamResponse)
 async def join_team(
     team_id: int,
     join_data: JoinTeamRequest,
@@ -454,7 +454,7 @@ async def join_team(
     return team_response
 
 
-@router.put("/{team_id}/audit", response_model=TeamResponse)
+@router.put("/{team_id:int}/audit", response_model=TeamResponse)
 async def audit_team(
     team_id: int,
     audit_data: TeamAuditRequest,

@@ -80,7 +80,7 @@ async def get_event_channels(
     )
 
 
-@router.get("/{channel_id}", response_model=EventChannelResponse)
+@router.get("/{channel_id:int}", response_model=EventChannelResponse)
 async def get_event_channel(
     channel_id: int,
     db: Session = Depends(get_db),
@@ -157,7 +157,7 @@ async def create_event_channel(
     )
 
 
-@router.put("/{channel_id}", response_model=EventChannelResponse)
+@router.put("/{channel_id:int}", response_model=EventChannelResponse)
 async def update_event_channel(
     channel_id: int,
     channel_data: EventChannelUpdate,
@@ -212,7 +212,7 @@ async def update_event_channel(
     )
 
 
-@router.delete("/{channel_id}")
+@router.delete("/{channel_id:int}")
 async def delete_event_channel(
     channel_id: int,
     db: Session = Depends(get_db),
@@ -229,7 +229,7 @@ async def delete_event_channel(
     return {"message": "删除成功"}
 
 
-@router.post("/{channel_id}/test", response_model=TestChannelResponse)
+@router.post("/{channel_id:int}/test", response_model=TestChannelResponse)
 async def test_event_channel(
     channel_id: int,
     db: Session = Depends(get_db),
@@ -275,7 +275,7 @@ async def test_event_channel(
     )
 
 
-@router.post("/{channel_id}/toggle")
+@router.post("/{channel_id:int}/toggle")
 async def toggle_event_channel(
     channel_id: int,
     db: Session = Depends(get_db),

@@ -162,7 +162,7 @@ async def get_roles(
     )
 
 
-@router.get("/roles/{role_id}", response_model=RoleResponse)
+@router.get("/roles/{role_id:int}", response_model=RoleResponse)
 async def get_role(
     role_id: int,
     db: Session = Depends(get_db),
@@ -208,7 +208,7 @@ async def create_role(
     return RoleResponse.model_validate(role)
 
 
-@router.put("/roles/{role_id}", response_model=RoleResponse)
+@router.put("/roles/{role_id:int}", response_model=RoleResponse)
 async def update_role(
     role_id: int,
     role_data: RoleUpdate,
@@ -240,7 +240,7 @@ async def update_role(
     return RoleResponse.model_validate(role)
 
 
-@router.delete("/roles/{role_id}")
+@router.delete("/roles/{role_id:int}")
 async def delete_role(
     role_id: int,
     db: Session = Depends(get_db),

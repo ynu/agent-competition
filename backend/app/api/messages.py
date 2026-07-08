@@ -142,7 +142,7 @@ async def create_message(
     return result
 
 
-@router.put("/{message_id}/read", response_model=MessageResponse)
+@router.put("/{message_id:int}/read", response_model=MessageResponse)
 async def mark_as_read(
     message_id: int,
     db: Session = Depends(get_db),
@@ -190,7 +190,7 @@ async def mark_all_as_read(
     return {"message": "所有消息已标记为已读"}
 
 
-@router.get("/{message_id}", response_model=MessageResponse)
+@router.get("/{message_id:int}", response_model=MessageResponse)
 async def get_message(
     message_id: int,
     db: Session = Depends(get_db),

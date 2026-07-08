@@ -165,7 +165,7 @@ async def create_review(
     return response
 
 
-@router.put("/{review_id}", response_model=ReviewResponse)
+@router.put("/{review_id:int}", response_model=ReviewResponse)
 async def update_review(
     review_id: int,
     review_data: ReviewUpdate,

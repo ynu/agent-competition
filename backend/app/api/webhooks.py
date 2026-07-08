@@ -181,7 +181,7 @@ async def get_webhooks(
     )
 
 
-@router.get("/{webhook_id}", response_model=WebhookResponse)
+@router.get("/{webhook_id:int}", response_model=WebhookResponse)
 async def get_webhook(
     webhook_id: int,
     db: Session = Depends(get_db),
@@ -255,7 +255,7 @@ async def create_webhook(
     )
 
 
-@router.put("/{webhook_id}", response_model=WebhookResponse)
+@router.put("/{webhook_id:int}", response_model=WebhookResponse)
 async def update_webhook(
     webhook_id: int,
     webhook_data: WebhookUpdate,
@@ -302,7 +302,7 @@ async def update_webhook(
     )
 
 
-@router.delete("/{webhook_id}")
+@router.delete("/{webhook_id:int}")
 async def delete_webhook(
     webhook_id: int,
     db: Session = Depends(get_db),
@@ -322,7 +322,7 @@ async def delete_webhook(
     return {"message": "删除成功"}
 
 
-@router.post("/{webhook_id}/test", response_model=TestWebhookResponse)
+@router.post("/{webhook_id:int}/test", response_model=TestWebhookResponse)
 async def test_webhook(
     webhook_id: int,
     db: Session = Depends(get_db),
@@ -334,7 +334,7 @@ async def test_webhook(
     return TestWebhookResponse(**result)
 
 
-@router.get("/{webhook_id}/deliveries")
+@router.get("/{webhook_id:int}/deliveries")
 async def get_webhook_deliveries(
     webhook_id: int,
     page: int = Query(1, ge=1),
@@ -375,7 +375,7 @@ async def get_webhook_deliveries(
     }
 
 
-@router.get("/{webhook_id}/secret")
+@router.get("/{webhook_id:int}/secret")
 async def get_webhook_secret(
     webhook_id: int,
     db: Session = Depends(get_db),

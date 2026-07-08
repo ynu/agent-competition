@@ -410,7 +410,7 @@ async def create_work(
     return response
 
 
-@router.put("/{work_id}", response_model=WorkResponse)
+@router.put("/{work_id:int}", response_model=WorkResponse)
 async def update_work(
     work_id: int,
     work_data: WorkUpdate,
@@ -473,7 +473,7 @@ async def update_work(
     return response
 
 
-@router.delete("/{work_id}")
+@router.delete("/{work_id:int}")
 async def delete_work(
     work_id: int,
     db: Session = Depends(get_db),
@@ -522,7 +522,7 @@ async def delete_work(
     return {"message": "删除成功"}
 
 
-@router.post("/{work_id}/vote")
+@router.post("/{work_id:int}/vote")
 async def vote_work(
     work_id: int,
     vote_data: VoteRequest,
@@ -860,7 +860,7 @@ async def get_copyright_agreements(
     return PageResponse(total=total, page=page, page_size=page_size, items=items)
 
 
-@router.get("/copyright-agreements/{agreement_id}", response_model=dict)
+@router.get("/copyright-agreements/{agreement_id:int}", response_model=dict)
 async def get_copyright_agreement_detail(
     agreement_id: int,
     db: Session = Depends(get_db),
@@ -1116,7 +1116,7 @@ def get_work_with_team_info(db: Session, work: Work) -> dict:
     }
 
 
-@router.post("/{work_id}/llm-check")
+@router.post("/{work_id:int}/llm-check")
 async def check_single_work_llm(
     work_id: int,
     db: Session = Depends(get_db),

@@ -60,7 +60,7 @@ async def get_users(
     )
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id:int}", response_model=UserResponse)
 async def get_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -122,7 +122,7 @@ async def create_user(
     return response
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put("/{user_id:int}", response_model=UserResponse)
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
@@ -156,7 +156,7 @@ async def update_user(
     return UserResponse.model_validate(user)
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id:int}")
 async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -184,7 +184,7 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/{user_id}/reset-password")
+@router.post("/{user_id:int}/reset-password")
 async def reset_user_password(
     user_id: int,
     data: ResetPasswordRequest,
@@ -211,7 +211,7 @@ async def reset_user_password(
 
 # ============== Passkey 管理 ==============
 
-@router.get("/{user_id}/passkey-credentials")
+@router.get("/{user_id:int}/passkey-credentials")
 async def get_user_passkey_credentials(
     user_id: int,
     db: Session = Depends(get_db),
@@ -237,7 +237,7 @@ async def get_user_passkey_credentials(
     }
 
 
-@router.post("/{user_id}/reset-passkey")
+@router.post("/{user_id:int}/reset-passkey")
 async def reset_user_passkey(
     user_id: int,
     db: Session = Depends(get_db),
@@ -265,7 +265,7 @@ async def reset_user_passkey(
     return {"message": f"已重置用户 {user.username} 的所有 Passkey，共 {deleted_count} 个"}
 
 
-@router.put("/{user_id}/force-passkey")
+@router.put("/{user_id:int}/force-passkey")
 async def set_force_passkey(
     user_id: int,
     data: ForcePasskeyRequest,
@@ -291,7 +291,7 @@ async def set_force_passkey(
 
 # ============== 2FA 管理 ==============
 
-@router.post("/{user_id}/reset-otp")
+@router.post("/{user_id:int}/reset-otp")
 async def admin_reset_user_otp(
     user_id: int,
     db: Session = Depends(get_db),

@@ -466,7 +466,7 @@ async def create_competition_theme(
     )
 
 
-@router.put("/competition-themes/{theme_id}", response_model=ThemeResponse)
+@router.put("/competition-themes/{theme_id:int}", response_model=ThemeResponse)
 async def update_competition_theme(
     theme_id: int,
     theme_data: ThemeUpdate,
@@ -509,7 +509,7 @@ async def update_competition_theme(
     )
 
 
-@router.delete("/competition-themes/{theme_id}")
+@router.delete("/competition-themes/{theme_id:int}")
 async def delete_competition_theme(
     theme_id: int,
     db: Session = Depends(get_db),
