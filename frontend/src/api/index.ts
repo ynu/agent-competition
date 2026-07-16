@@ -144,7 +144,12 @@ export const reviewApi = {
     api.get('/reviews', { params }),
   create: (data: { work_id: number; score?: number; comment?: string }) => api.post('/reviews', data),
   update: (id: number, data: { score?: number; comment?: string }) => api.put(`/reviews/${id}`, data),
-  myReviews: (params?: { page?: number; page_size?: number }) => api.get('/reviews/my-reviews', { params })
+  myReviews: (params?: { page?: number; page_size?: number }) => api.get('/reviews/my-reviews', { params }),
+  // 成绩导出（管理员）
+  exportScores: () => {
+    const token = localStorage.getItem('token')
+    return `/api/reviews/export${token ? `?token=${token}` : ''}`
+  }
 }
 
 // Content APIs
