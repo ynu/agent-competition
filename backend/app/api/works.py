@@ -1042,10 +1042,28 @@ async def export_works(
         ws = wb.active
         ws.title = "作品列表"
 
-        headers = ["作品名称", "队伍", "队长姓名", "队长学工号", "主题", "投票数", "评分", "状态", "创建时间"]
+        # 构建文件URL（直接使用相对路径）
+        def get_file_url(file_path):
+            if not file_path:
+                return "-"
+            # 文件路径已经是 /uploads/pdf/xxx.pdf 或 /uploads/video/xxx.mp4 格式
+            return file_path if file_path.startswith('/') else f"/{file_path}"
+
+        def get_pdf_url(file_path):
+            if not file_path:
+                return "-"
+            return file_path if file_path.startswith('/') else f"/{file_path}"
+
+        def get_video_url(file_path):
+            if not file_path:
+                return "-"
+            return file_path if file_path.startswith('/') else f"/{file_path}"
+
+        headers = ["作品ID", "作品名称", "队伍", "队长姓名", "队长学工号", "主题", "智能体URL", "编排URL", "PDF文件", "MP4视频", "投票数", "评分", "LLM检测结果", "状态", "创建时间"]
         ws.append(headers)
 
         status_map = {"pending": "待审核", "approved": "已通过", "rejected": "已拒绝"}
+        llm_result_map = {"ai_generated": "AI生成", "human_created": "人工创作", "unknown": "未知", "pass": "通过", "suspicious": "可疑", "fail": "失败"}
 
         for w in works:
             leader = db.query(User).filter(User.id == w.team.leader_id).first()
@@ -1053,13 +1071,19 @@ async def export_works(
             leader_username = leader.username if leader else "-"
 
             ws.append([
+                w.id,
                 w.name,
                 w.team.name,
                 leader_name,
                 leader_username,
                 w.theme_obj.name if w.theme_obj else "-",
+                w.agent_url or "-",
+                w.agent_editor_url or "-",
+                get_pdf_url(w.pdf_file),
+                get_video_url(w.video_file),
                 w.vote_count,
                 w.score if w.score else "-",
+                llm_result_map.get(w.llm_result, w.llm_result or "-"),
                 status_map.get(w.status.value if hasattr(w.status, 'value') else w.status, w.status),
                 w.created_at.strftime("%Y-%m-%d %H:%M:%S") if w.created_at else "-"
             ])
