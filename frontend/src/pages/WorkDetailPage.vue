@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { workApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
 import leaderAvatar from '@/assets/images/img_team_01.png'
 import memberAvatar from '@/assets/images/img_team_02.png'
-import resourceIcon1 from '@/assets/images/img_works_01.png'
-import resourceIcon2 from '@/assets/images/img_works_02.png'
-import resourceIcon3 from '@/assets/images/img_works_03.png'
 import bannerDetail from '@/assets/images/banner_works_detail.png'
 
 const route = useRoute()
@@ -97,11 +94,6 @@ function handleResource(resource: any) {
   }
 }
 
-function getCleanPath(path: string): string {
-  if (!path) return ''
-  return '/' + path.replace(/^\.\//, '').replace(/^\//, '')
-}
-
 // 获取队伍成员（模拟数据，实际从API获取）
 function getMembers() {
   if (work.value?.team_members && work.value.team_members.length > 0) {
@@ -123,9 +115,7 @@ function getResources() {
       title: '智能体URL',
       value: work.value.agent_url,
       buttonText: '打开链接',
-      className: 'bg-[#e0f2ff]',
-      buttonClass: '!bg-[#2d80ff]',
-      icon: resourceIcon1,
+      hue: 'blue',
       type: 'link'
     })
   }
@@ -134,9 +124,7 @@ function getResources() {
       title: 'PDF文档',
       value: work.value.pdf_file,
       buttonText: '查看PDF',
-      className: 'bg-[#fff0f3]',
-      buttonClass: '!bg-[#ff5959]',
-      icon: resourceIcon2,
+      hue: 'pink',
       type: 'pdf'
     })
   }
@@ -145,9 +133,7 @@ function getResources() {
       title: '演示视频',
       value: work.value.video_file,
       buttonText: '播放视频',
-      className: 'bg-[#fff6e5]',
-      buttonClass: '!bg-[#ff8d45]',
-      icon: resourceIcon3,
+      hue: 'orange',
       type: 'video'
     })
   }
@@ -162,75 +148,88 @@ function getDescriptionParagraphs() {
 </script>
 
 <template>
-  <section class="work-detail-page min-h-[calc(100vh-200px)] bg-white pb-[82px] pt-[27px]">
-    <div class="mx-auto w-full max-w-[1200px] px-[16px] xl:px-0">
-      <div class="detail-breadcrumb flex items-center gap-[7px] text-[#777]">
-        <i class="iconfont icon-shouye text-[#999999]"></i>
+  <section class="min-h-[calc(100vh-200px)] pb-[80px] pt-[28px]">
+    <div class="mx-auto w-full max-w-[1200px] px-[16px]">
+      <div class="flex items-center gap-[6px] text-[14px] text-[#86868b]">
         <span>您当前位置：</span>
-        <RouterLink to="/" class="text-[#047eff] hover:underline">首页</RouterLink>
+        <RouterLink to="/" class="text-[#0071e3] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
-        <RouterLink to="/works" class="text-[#047eff] hover:underline">参赛作品</RouterLink>
+        <RouterLink to="/works" class="text-[#0071e3] hover:underline">参赛作品</RouterLink>
         <span class="mx-1">/</span>
         <span>作品详情</span>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="mt-[36px] text-center py-16">
-        <div class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-3 text-gray-500">加载中...</p>
+      <div v-if="loading" class="mt-[48px] text-center py-16">
+        <div class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#0071e3]/20 border-t-[#0071e3]"></div>
+        <p class="mt-3 text-[#86868b]">加载中...</p>
       </div>
 
       <!-- Error -->
-      <div v-else-if="error" class="mt-[36px] text-center py-16">
-        <p class="text-red-500">{{ error }}</p>
+      <div v-else-if="error" class="mt-[48px] text-center py-16">
+        <p class="text-[#ff3b30]">{{ error }}</p>
       </div>
 
       <!-- Content -->
-      <article v-else-if="work" class="mt-[19px] overflow-hidden rounded-[12px] bg-white shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
-        <!-- Header -->
-        <div class="relative h-[210px] overflow-hidden bg-[#e7f8ff]">
-          <img :src="bannerDetail" alt="" class="absolute inset-0 h-full w-full object-cover" />
-          <span class="absolute left-0 top-0 flex h-[37px] w-[71px] items-center justify-center rounded-br-[14px] bg-[#087fff] text-[22px] font-[800] leading-none text-white">
-            {{ work.id }}
+      <article v-else-if="work" class="anim-fade-up mt-[20px] overflow-hidden rounded-[24px] border border-white/70 shadow-[var(--shadow-card)]">
+        <!-- 绚丽渐变 Header -->
+        <div class="relative h-[240px] overflow-hidden bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8]">
+          <img
+            :src="bannerDetail"
+            alt=""
+            class="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-overlay"
+          />
+          <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/15 blur-3xl"></div>
+          <div class="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-white/10 blur-3xl"></div>
+
+          <span class="absolute left-[24px] top-[24px] rounded-full bg-white/20 px-[16px] py-[4px] text-[15px] font-[800] text-white backdrop-blur-sm">
+            #{{ work.id }}
           </span>
 
-          <div class="absolute left-[80px] top-[77px] max-w-[720px]">
-            <h1 class="text-[28px] font-[800] leading-[34px] text-[#004385]">{{ work.name }}</h1>
-            <div class="mt-[15px] flex items-center gap-[31px] text-[16px] leading-[20px] text-[#666]">
+          <div class="absolute left-[32px] top-[86px] max-w-[640px]">
+            <h1 class="text-[28px] font-[800] leading-[38px] text-white drop-shadow-lg lg:text-[32px]">
+              {{ work.name }}
+            </h1>
+            <div class="mt-[14px] flex flex-wrap items-center gap-[24px] text-[15px] text-white/85">
               <span class="inline-flex items-center gap-[7px]">
-                <i class="iconfont icon-zongzhiduiwu text-[22px] text-[#999]"></i>
+                <i class="iconfont icon-zongzhiduiwu text-[20px]"></i>
                 {{ work.team_name || '未知队伍' }}
               </span>
               <span class="inline-flex items-center gap-[7px]">
-                <i class="iconfont icon-icon- text-[22px] text-[#999]"></i>
-                {{ work.view_count || 0 }}
+                <i class="iconfont icon-icon- text-[20px]"></i>
+                {{ work.view_count || 0 }} 浏览
               </span>
             </div>
           </div>
 
-          <div class="absolute right-[72px] top-[35px] flex flex-col items-center">
-            <div class="flex h-[103px] w-[103px] flex-col items-center justify-center rounded-full bg-white text-center">
-              <strong class="text-[32px] font-[800] leading-[38px] text-[#ff3c3c]">{{ work.vote_count || 0 }}</strong>
-              <span class="mt-[7px] text-[16px] font-[400] leading-[16px] text-[#ff3c3c]">票</span>
+          <!-- 投票胶囊 -->
+          <div class="absolute right-[32px] top-[40px] flex flex-col items-center">
+            <div class="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full bg-white/95 text-center shadow-[0_16px_40px_rgba(0,0,0,0.25)] backdrop-blur">
+              <strong class="bg-gradient-to-r from-[#ff5ca8] to-[#ff3b30] bg-clip-text text-[30px] font-[800] leading-[36px] text-transparent">
+                {{ work.vote_count || 0 }}
+              </strong>
+              <span class="mt-[2px] text-[14px] text-[#86868b]">票</span>
             </div>
             <el-button
-              type="danger"
               round
-              class="vote-action mt-[10px] !h-[40px] !w-[133px] !border-0 !bg-[#ff5959] !px-0 !text-[18px] !font-[500]"
+              class="mt-[12px] !h-[40px] !w-[132px] !border-0 !bg-white !text-[15px] !font-[700] !text-[#0071e3] shadow-[0_8px_24px_rgba(0,0,0,0.2)] hover:!bg-white/90"
               :disabled="hasVoted()"
               @click="handleVote"
             >
-              <i class="iconfont icon-toupiao mr-[4px] text-[18px]"></i>
+              <i class="iconfont icon-toupiao mr-[4px] text-[17px]"></i>
               {{ hasVoted() ? '已投票' : '我要投票' }}
             </el-button>
           </div>
         </div>
 
         <!-- Description -->
-        <div class="pl-[39px] pr-[12px] pb-[31px] pt-[17px]">
-          <h2 class="text-[20px] font-[700] leading-[34px] text-[#007dff]">作品描述</h2>
-          <div class="mt-[12px] space-y-[14px] text-[16px] leading-[28px] text-[#5f5f5f] detail-scroll max-h-[303px] overflow-y-auto">
-            <p v-for="(paragraph, idx) in getDescriptionParagraphs()" :key="idx" class="indent-[2em]">
+        <div class="bg-white/85 px-[32px] pb-[32px] pt-[22px] backdrop-blur-xl lg:px-[40px]">
+          <h2 class="flex items-center gap-[10px] text-[20px] font-[700] text-[#1d1d1f]">
+            <span class="inline-block h-[22px] w-[5px] rounded-full bg-gradient-to-b from-[#0090ff] to-[#6a5cff]"></span>
+            作品描述
+          </h2>
+          <div class="detail-scroll mt-[14px] max-h-[303px] space-y-[14px] overflow-y-auto pr-2 text-[16px] leading-[30px] text-[#515154]">
+            <p v-for="(paragraph, idx) in getDescriptionParagraphs()" :key="idx">
               {{ paragraph }}
             </p>
           </div>
@@ -238,59 +237,85 @@ function getDescriptionParagraphs() {
       </article>
 
       <!-- Team Members -->
-      <section v-if="work" class="mt-[24px] rounded-[12px] bg-white px-[36px] pb-[34px] pt-[17px] shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
-        <h2 class="text-[20px] font-[700] leading-[34px] text-[#007dff]">队伍成员</h2>
-        <div class="mt-[9px] flex flex-wrap gap-[14px]">
+      <section v-if="work" class="anim-fade-up apple-card mt-[24px] px-[32px] pb-[34px] pt-[24px] lg:px-[40px]">
+        <h2 class="flex items-center gap-[10px] text-[20px] font-[700] text-[#1d1d1f]">
+          <span class="inline-block h-[22px] w-[5px] rounded-full bg-gradient-to-b from-[#6a5cff] to-[#ff5ca8]"></span>
+          队伍成员
+        </h2>
+        <div class="anim-stagger mt-[16px] flex flex-wrap gap-[16px]">
           <div
             v-for="(member, idx) in getMembers()"
             :key="idx"
-            class="flex h-[63px] w-[177px] items-center rounded-[8px] bg-[#f3f3f3] px-[14px]"
+            class="flex h-[64px] items-center rounded-[18px] bg-white px-[16px] shadow-[0_2px_12px_rgba(29,42,68,0.06)] ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)]"
           >
-            <img :src="member.avatar || memberAvatar" :alt="member.name" class="h-[44px] w-[44px] shrink-0 rounded-full" />
-            <div class="ml-[14px] min-w-0">
-              <p class="truncate text-[16px] font-[700] leading-[22px] text-[#191919]">{{ member.name || member.student_id || '成员' }}</p>
-              <p class="mt-[1px] text-[14px] leading-[20px] text-[#777]">{{ member.is_leader ? '队长' : '队员' }}</p>
+            <img :src="member.avatar || memberAvatar" :alt="member.name" class="h-[44px] w-[44px] shrink-0 rounded-full ring-2 ring-white shadow" />
+            <div class="ml-[13px] min-w-0">
+              <p class="truncate text-[15px] font-[700] text-[#1d1d1f]">{{ member.name || member.student_id || '成员' }}</p>
+              <p class="mt-[1px] text-[13px] text-[#86868b]">
+                <span :class="member.is_leader ? 'text-[#ff9f0a] font-[600]' : ''">{{ member.is_leader ? '队长' : '队员' }}</span>
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       <!-- Resources -->
-      <section v-if="work && getResources().length > 0" class="mt-[24px] rounded-[12px] bg-white px-[36px] pb-[33px] pt-[17px] shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
-        <h2 class="text-[20px] font-[700] leading-[34px] text-[#007dff]">作品资源</h2>
-        <div class="mt-[8px] grid gap-x-[23px] gap-y-[24px] lg:grid-cols-2">
+      <section v-if="work && getResources().length > 0" class="anim-fade-up apple-card mt-[24px] px-[32px] pb-[34px] pt-[24px] lg:px-[40px]">
+        <h2 class="flex items-center gap-[10px] text-[20px] font-[700] text-[#1d1d1f]">
+          <span class="inline-block h-[22px] w-[5px] rounded-full bg-gradient-to-b from-[#ff5ca8] to-[#ff9f45]"></span>
+          作品资源
+        </h2>
+        <div class="anim-stagger mt-[14px] grid gap-x-[24px] gap-y-[18px] lg:grid-cols-2">
           <div
             v-for="resource in getResources()"
             :key="resource.title"
-            class="resource-card flex min-h-[80px] items-center rounded-[8px] px-[15px]"
-            :class="resource.className"
+            class="group flex min-h-[84px] cursor-pointer items-center rounded-[18px] px-[18px] transition-all duration-300 hover:-translate-y-1"
+            :class="{
+              'bg-[#0071e3]/6 hover:bg-[#0071e3]/10 hover:shadow-[0_12px_32px_rgba(0,113,227,0.18)]': resource.hue === 'blue',
+              'bg-[#ff5ca8]/6 hover:bg-[#ff5ca8]/10 hover:shadow-[0_12px_32px_rgba(255,92,168,0.18)]': resource.hue === 'pink',
+              'bg-[#ff9f0a]/8 hover:bg-[#ff9f0a]/12 hover:shadow-[0_12px_32px_rgba(255,159,10,0.2)]': resource.hue === 'orange'
+            }"
+            @click="handleResource(resource)"
           >
-            <img :src="resource.icon" class="w-[55px] h-[55px] rounded-full" />
-            <div class="ml-[15px] min-w-0 flex-1">
-              <p class="text-[16px] font-[800] leading-[22px] text-[#1d1d1d] line-clamp-1">{{ resource.title }}</p>
-              <p class="mt-[3px] truncate text-[14px] leading-[20px] text-[#666]">{{ resource.value }}</p>
+            <div
+              class="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] text-[22px] text-white shadow-lg transition-transform duration-300 group-hover:scale-110"
+              :class="{
+                'bg-gradient-to-br from-[#0090ff] to-[#00c6ff]': resource.hue === 'blue',
+                'bg-gradient-to-br from-[#ff5ca8] to-[#ff9f45]': resource.hue === 'pink',
+                'bg-gradient-to-br from-[#ff9f0a] to-[#ff5ca8]': resource.hue === 'orange'
+              }"
+            >
+              <span v-if="resource.type === 'link'">🔗</span>
+              <span v-else-if="resource.type === 'pdf'">📄</span>
+              <span v-else>🎬</span>
             </div>
-            <el-button
-              round
-              class="resource-button ml-[16px] !h-[40px] !w-[104px] !border-0 !px-0 !text-[16px] !font-[800] !text-white"
-              :class="resource.buttonClass"
-              @click="handleResource(resource)"
+            <div class="ml-[16px] min-w-0 flex-1">
+              <p class="text-[16px] font-[700] text-[#1d1d1f] line-clamp-1">{{ resource.title }}</p>
+              <p class="mt-[3px] truncate text-[13px] text-[#86868b]">{{ resource.value }}</p>
+            </div>
+            <span
+              class="ml-[16px] inline-flex h-[36px] items-center rounded-full px-[20px] text-[14px] font-[600] text-white shadow-md transition-transform duration-300 group-hover:scale-105"
+              :class="{
+                'bg-gradient-to-r from-[#0090ff] to-[#00c6ff]': resource.hue === 'blue',
+                'bg-gradient-to-r from-[#ff5ca8] to-[#ff9f45]': resource.hue === 'pink',
+                'bg-gradient-to-r from-[#ff9f0a] to-[#ff5ca8]': resource.hue === 'orange'
+              }"
             >
               {{ resource.buttonText }}
-            </el-button>
+            </span>
           </div>
         </div>
       </section>
     </div>
 
     <!-- Video Dialog -->
-    <el-dialog v-model="videoVisible" title="演示视频" width="780px" class="video-dialog" destroy-on-close>
-      <div class="flex min-h-[360px] items-center justify-center rounded-[8px] bg-[#111827]">
+    <el-dialog v-model="videoVisible" title="演示视频" width="780px" destroy-on-close>
+      <div class="flex min-h-[360px] items-center justify-center rounded-[16px] bg-[#0b0b0f]">
         <video
           v-if="work?.video_file"
           :src="'/' + work.video_file.replaceAll('\\', '/')"
           controls
-          class="max-h-[360px] w-full rounded-[8px]"
+          class="max-h-[360px] w-full rounded-[16px]"
         >
           您的浏览器不支持视频播放
         </video>
@@ -301,97 +326,18 @@ function getDescriptionParagraphs() {
 </template>
 
 <style scoped>
-.work-detail-page {
-  background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+.detail-scroll::-webkit-scrollbar {
+  width: 6px;
 }
 
-.detail-breadcrumb {
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.detail-scroll::-webkit-scrollbar,
-.detail-scroll::-webkit-scrollbar-thumb,
-.detail-scroll::-webkit-scrollbar-thumb:hover,
-.detail-scroll::-webkit-scrollbar-thumb:active {
-  background: #0a7fff;
-  height: 4px;
-  width: 5px;
-  border-radius: 3px;
-}
-
-.detail-scroll::-webkit-scrollbar-track {
-  background: #f0f0f0;
-  width: 5px;
-  border-radius: 3px;
-}
-
-.vote-action.is-disabled {
-  opacity: 0.72;
-}
-
-.resource-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.resource-card:hover {
-  box-shadow: 0 10px 22px rgba(34, 96, 170, 0.12);
-  transform: translateY(-2px);
-}
-
-.resource-button {
-  transition: filter 0.2s ease, transform 0.2s ease;
-}
-
-.resource-button:hover {
-  filter: brightness(1.04);
-  transform: translateY(-1px);
-}
-
-.video-dialog :deep(.el-dialog__body) {
-  padding-top: 10px;
-}
-
-@media (max-width: 1023px) {
-  .work-detail-page {
-    padding-top: 20px;
-  }
+.detail-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 113, 227, 0.3);
+  border-radius: 999px;
 }
 
 @media (max-width: 767px) {
-  .work-detail-page article > div:first-child {
-    height: 300px;
-  }
-
-  .work-detail-page article > div:first-child > div:nth-of-type(1) {
-    left: 24px;
-    top: 70px;
-    right: 24px;
-  }
-
-  .work-detail-page article > div:first-child > div:nth-of-type(2) {
-    left: 24px;
-    right: auto;
-    top: 166px;
-    align-items: flex-start;
-  }
-
-  .detail-scroll {
-    max-height: none;
-    padding-left: 22px;
-    padding-right: 22px;
-  }
-
-  .resource-card {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    padding-bottom: 18px;
-    padding-top: 18px;
-  }
-
-  .resource-button {
-    margin-left: 69px;
-    margin-top: 14px;
+  .anim-fade-up article > div:first-child {
+    height: 320px;
   }
 }
 </style>

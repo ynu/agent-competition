@@ -173,45 +173,44 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div @click="handleClickOutside" class="min-h-screen bg-gray-50 flex flex-col">
+  <div @click="handleClickOutside" class="min-h-screen flex flex-col bg-[#f5f5f7]">
     <!-- Admin Layout -->
     <template v-if="isAdminPage">
       <div class="flex h-screen overflow-hidden">
         <aside :class="['relative flex flex-col transition-all duration-500', sidebarCollapsed ? 'w-25' : 'w-72']">
-          <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"></div>
-          <div class="absolute inset-0 bg-gradient-to-tr from-blue-600/20 via-transparent to-purple-600/20 animate-pulse"></div>
+          <!-- 深邃夜空渐变侧栏 -->
+          <div class="absolute inset-0 bg-[#14141c]"></div>
+          <div class="absolute inset-0" style="background: radial-gradient(at 20% 10%, rgba(0,144,255,0.25) 0px, transparent 50%), radial-gradient(at 80% 40%, rgba(106,92,255,0.22) 0px, transparent 50%), radial-gradient(at 40% 90%, rgba(255,92,168,0.16) 0px, transparent 50%)"></div>
 
-          <div class="relative h-20 flex items-center px-4 border-b border-white/10 backdrop-blur-sm">
+          <div class="relative h-20 flex items-center px-4 border-b border-white/8">
             <RouterLink to="/" class="flex items-center gap-3 group">
-              <div class="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
-                <span class="text-white font-bold text-xl">🤖</span>
+              <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] shadow-[0_8px_24px_rgba(106,92,255,0.45)] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                <span class="text-xl text-white">🤖</span>
               </div>
               <div v-if="!sidebarCollapsed" class="flex flex-col">
-                <span class="text-white font-bold text-lg whitespace-nowrap bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  智能体大赛
-                </span>
-                <span class="text-xs text-blue-300/70 whitespace-nowrap">管理后台</span>
+                <span class="whitespace-nowrap text-lg font-bold text-white">智能体大赛</span>
+                <span class="whitespace-nowrap text-xs text-white/45">管理后台</span>
               </div>
             </RouterLink>
           </div>
 
           <nav class="relative flex-1 py-6 overflow-y-auto">
-            <ul class="space-y-2 px-3">
-              <li v-for="(item, index) in filteredMenuItems" :key="item.path">
+            <ul class="space-y-1.5 px-3">
+              <li v-for="item in filteredMenuItems" :key="item.path">
                 <RouterLink
                   :to="item.path"
                   :class="[
-                    'group relative flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300',
+                    'group relative flex items-center gap-3 px-4 py-3 rounded-[14px] transition-all duration-300',
                     route.path === item.path || (item.path !== '/admin' && route.path.startsWith(item.path))
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-gradient-to-r from-[#0090ff]/90 to-[#6a5cff]/90 text-white shadow-[0_8px_24px_rgba(0,144,255,0.35)]'
+                      : 'text-white/65 hover:bg-white/8 hover:text-white'
                   ]"
                 >
                   <div :class="[
-                    'relative z-10 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                    'relative z-10 w-9 h-9 rounded-[11px] flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-105',
                     route.path === item.path || (item.path !== '/admin' && route.path.startsWith(item.path))
                       ? 'bg-white/20'
-                      : 'bg-white/5 group-hover:bg-white/10'
+                      : 'bg-white/6 group-hover:bg-white/10'
                   ]">
                     <svg v-if="item.icon === 'dashboard'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
@@ -280,8 +279,8 @@ onUnmounted(() => {
         </aside>
 
         <div class="flex-1 flex flex-col overflow-hidden">
-          <header class="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6">
-            <h1 class="text-lg font-semibold text-gray-800">{{ route.meta?.title || '管理后台' }}</h1>
+          <header class="glass shadow-[0_1px_0_rgba(0,0,0,0.04)] border-b border-black/[0.04] h-16 flex items-center justify-between px-6">
+            <h1 class="text-lg font-semibold text-[#1d1d1f]">{{ route.meta?.title || '管理后台' }}</h1>
             <div class="flex items-center gap-4">
               <!-- Messages Dropdown -->
               <div class="relative unread-dropdown-container">
@@ -365,7 +364,7 @@ onUnmounted(() => {
                 前台
               </RouterLink>
               <div class="flex items-center gap-2 cursor-pointer" @click="router.push('/admin/profile')">
-                <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] text-sm font-semibold text-white shadow-[0_4px_12px_rgba(106,92,255,0.35)]">
                   {{ (authStore.user?.nickname || authStore.user?.username || 'U')[0].toUpperCase() }}
                 </div>
                 <span class="text-sm text-gray-700">{{ authStore.user?.nickname || authStore.user?.username }}</span>
@@ -399,7 +398,7 @@ onUnmounted(() => {
             </div>
           </header>
 
-          <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+          <main class="flex-1 overflow-y-auto bg-[#f5f5f7] p-6">
             <RouterView />
           </main>
         </div>
@@ -455,14 +454,14 @@ onUnmounted(() => {
       <div v-if="switchSearching" class="text-center py-4 text-gray-500">
         <span class="animate-pulse">搜索中...</span>
       </div>
-      <div v-else-if="switchSearchResults.length > 0" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <div v-else-if="switchSearchResults.length > 0" class="max-h-64 overflow-y-auto rounded-[14px] border border-black/[0.06] divide-y divide-black/[0.04]">
         <button
           v-for="u in switchSearchResults"
           :key="u.id"
           @click="doSwitchUser(u)"
-          class="w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+          class="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#0071e3]/6 transition-colors text-left"
         >
-          <div class="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white text-xs font-medium">
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] text-xs font-semibold text-white">
             {{ (u.nickname || u.username || 'U')[0].toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">

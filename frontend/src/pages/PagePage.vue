@@ -59,9 +59,9 @@ async function fetchContent() {
         {{ error }}
       </div>
     </div>
-    <div v-else-if="content" class="max-w-4xl mx-auto px-4 py-8">
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-10">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ content.title }}</h1>
+    <div v-else-if="content" class="mx-auto max-w-4xl px-4 py-10">
+      <div class="apple-card p-8 md:p-12">
+        <h1 class="mb-6 text-[30px] font-[700] text-[#1d1d1f]">{{ content.title }}</h1>
         <div class="prose max-w-none" v-html="renderedContent"></div>
       </div>
     </div>

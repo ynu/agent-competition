@@ -325,39 +325,40 @@ async function handleOtpVerify() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500 py-12 px-4 relative overflow-hidden">
-    <!-- Background decorations -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
-    </div>
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0b0b14] py-12 px-4">
+    <!-- 绚丽极光背景 -->
+    <div class="absolute inset-0" style="background: radial-gradient(at 15% 20%, rgba(0,144,255,0.4) 0px, transparent 50%), radial-gradient(at 85% 15%, rgba(255,92,168,0.32) 0px, transparent 50%), radial-gradient(at 70% 85%, rgba(106,92,255,0.38) 0px, transparent 50%), radial-gradient(at 20% 80%, rgba(0,198,255,0.28) 0px, transparent 50%)"></div>
+    <div class="absolute inset-0 backdrop-blur-[2px]"></div>
+    <!-- 漂浮光斑 -->
+    <div class="anim-float pointer-events-none absolute -top-32 right-10 h-72 w-72 rounded-full bg-[#6a5cff]/25 blur-3xl"></div>
+    <div class="anim-float pointer-events-none absolute -bottom-32 left-10 h-72 w-72 rounded-full bg-[#ff5ca8]/20 blur-3xl" style="animation-delay: 1.6s"></div>
 
-    <div class="relative max-w-md w-full">
+    <div class="relative w-full max-w-md">
       <!-- Logo & Title -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
-          <span class="text-3xl">🤖</span>
+      <div class="anim-fade-up mb-8 text-center">
+        <div class="anim-float mx-auto mb-5 inline-flex h-[68px] w-[68px] items-center justify-center rounded-[22px] bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] text-[32px] shadow-[0_16px_48px_rgba(106,92,255,0.5)]">
+          🤖
         </div>
-        <h1 class="text-3xl font-bold text-white mb-2">智能体创新大赛</h1>
-        <p class="text-white/80">登录到管理系统</p>
+        <h1 class="mb-2 text-[30px] font-[700] text-white drop-shadow">智能体创新大赛</h1>
+        <p class="text-white/70">登录到管理系统</p>
       </div>
 
-      <!-- Login Card -->
-      <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <!-- Login Card：毛玻璃 -->
+      <div class="anim-fade-up rounded-[26px] border border-white/25 bg-white/[0.12] p-8 shadow-[0_32px_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl" style="animation-delay: 0.12s">
         <!-- Login Mode Toggle (only show when ?localAccount=true) -->
-        <div v-if="showBothTabs" class="flex bg-gray-100 rounded-xl p-1 mb-6">
+        <div v-if="showBothTabs" class="mb-6 flex rounded-full bg-white/15 p-1 backdrop-blur">
           <button
             @click="showPasswordTab = true"
-            class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-            :class="showPasswordTab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            class="flex-1 rounded-full py-2.5 text-sm font-[600] transition-all duration-300"
+            :class="showPasswordTab ? 'bg-white text-[#0071e3] shadow-md' : 'text-white/70 hover:text-white'"
           >
             账号密码
           </button>
           <button
             v-if="passkeyEnabled && webAuthnSupported"
             @click="showPasswordTab = false"
-            class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-            :class="!showPasswordTab ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+            class="flex-1 rounded-full py-2.5 text-sm font-[600] transition-all duration-300"
+            :class="!showPasswordTab ? 'bg-white text-[#30d158] shadow-md' : 'text-white/70 hover:text-white'"
           >
             通行密钥
           </button>
@@ -367,11 +368,11 @@ async function handleOtpVerify() {
           <!-- Passkey Login (only when ?localAccount=true and passkey tab selected) -->
           <template v-if="showBothTabs && !showPasswordTab && passkeyEnabled && webAuthnSupported">
             <div class="text-center py-4 mb-2">
-              <p class="text-sm text-gray-500 mb-6">点击按钮使用已注册的通行密钥登录，无需输入用户名</p>
+              <p class="mb-6 text-sm text-white/70">点击按钮使用已注册的通行密钥登录，无需输入用户名</p>
             </div>
 
             <!-- Error Message -->
-            <div v-if="passkeyError" class="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+            <div v-if="passkeyError" class="flex items-center gap-2 rounded-[14px] bg-[#ff3b30]/15 p-3 text-sm text-[#ffb3ae] backdrop-blur">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
@@ -383,7 +384,7 @@ async function handleOtpVerify() {
               type="button"
               @click="handlePasskeyLogin"
               :disabled="passkeyLoading"
-              class="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#30d158] to-[#00c6ff] py-3.5 font-[600] text-white shadow-[0_12px_36px_rgba(48,209,88,0.4)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg v-if="passkeyLoading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -399,10 +400,10 @@ async function handleOtpVerify() {
           <!-- Password Login -->
           <template v-if="showBothTabs && showPasswordTab">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">用户名/学工号</label>
+              <label class="mb-2 block text-sm font-[500] text-white/80">用户名/学工号</label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                   </svg>
                 </div>
@@ -410,17 +411,17 @@ async function handleOtpVerify() {
                   v-model="username"
                   type="text"
                   required
-                  class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  class="w-full rounded-[14px] border border-white/25 bg-white/12 py-3 pl-12 pr-4 text-white outline-none transition-all duration-300 placeholder:text-white/40 focus:border-[#0090ff]/60 focus:bg-white/18 focus:ring-4 focus:ring-[#0090ff]/25"
                   placeholder="请输入用户名"
                 />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+              <label class="mb-2 block text-sm font-[500] text-white/80">密码</label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
                 </div>
@@ -428,7 +429,7 @@ async function handleOtpVerify() {
                   v-model="password"
                   type="password"
                   required
-                  class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  class="w-full rounded-[14px] border border-white/25 bg-white/12 py-3 pl-12 pr-4 text-white outline-none transition-all duration-300 placeholder:text-white/40 focus:border-[#0090ff]/60 focus:bg-white/18 focus:ring-4 focus:ring-[#0090ff]/25"
                   placeholder="请输入密码"
                 />
               </div>
@@ -438,14 +439,14 @@ async function handleOtpVerify() {
           <!-- Unified Auth / Default content (when not ?localAccount=true) -->
           <template v-if="!showBothTabs">
             <div class="text-center py-4 mb-2">
-              <p class="text-sm text-gray-500 mb-6">使用学校统一身份认证账号登录，首次登录将自动创建用户</p>
+              <p class="mb-6 text-sm text-white/70">使用学校统一身份认证账号登录，首次登录将自动创建用户</p>
             </div>
 
             <!-- Unified Auth Button -->
             <button
               type="button"
               @click="handleCasLogin"
-              class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 flex items-center justify-center gap-2"
+              class="anim-gradient flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] py-3.5 font-[600] text-white shadow-[0_12px_36px_rgba(106,92,255,0.5)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
@@ -455,7 +456,7 @@ async function handleOtpVerify() {
           </template>
 
           <!-- Error Message -->
-          <div v-if="error" class="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+          <div v-if="error" class="flex items-center gap-2 rounded-[14px] bg-[#ff3b30]/15 p-3 text-sm text-[#ffb3ae] backdrop-blur">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
@@ -470,18 +471,18 @@ async function handleOtpVerify() {
           <!-- 2FA 验证码输入 (两步验证) -->
           <div v-if="requiresOtp" class="space-y-4">
             <div class="text-center py-4">
-              <div class="w-12 h-12 mx-auto mb-3 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 backdrop-blur">
+                <svg class="w-6 h-6 text-[#4d9df0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                 </svg>
               </div>
-              <p class="text-gray-600 mb-4">请输入 authenticator APP 中的验证码</p>
+              <p class="mb-4 text-white/80">请输入 authenticator APP 中的验证码</p>
               <input
                 v-model="otpCode"
                 type="text"
                 maxlength="6"
                 placeholder="000000"
-                class="w-32 text-center text-2xl tracking-widest px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-32 rounded-[14px] border border-white/25 bg-white/12 px-4 py-3 text-center text-2xl tracking-widest text-white outline-none transition-all duration-300 focus:border-[#0090ff]/60 focus:ring-4 focus:ring-[#0090ff]/25"
                 @keyup.enter="handleOtpVerify"
               />
             </div>
@@ -489,7 +490,7 @@ async function handleOtpVerify() {
             <button
               @click="handleOtpVerify"
               :disabled="otpLoading"
-              class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              class="w-full rounded-full bg-gradient-to-r from-[#0090ff] to-[#6a5cff] py-3 font-[600] text-white shadow-[0_10px_30px_rgba(0,144,255,0.4)] transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-50"
             >
               <svg v-if="otpLoading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -500,7 +501,7 @@ async function handleOtpVerify() {
 
             <button
               @click="requiresOtp = false; otpCode = ''; tempToken = ''"
-              class="w-full py-2 text-gray-600 hover:text-gray-800 text-sm"
+              class="w-full py-2 text-sm text-white/60 hover:text-white transition-colors"
             >
               返回重新登录
             </button>
@@ -511,7 +512,7 @@ async function handleOtpVerify() {
             v-if="showBothTabs && showPasswordTab && !requiresOtp"
             type="submit"
             :disabled="loading"
-            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            class="anim-gradient flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] py-3.5 font-[600] text-white shadow-[0_12px_36px_rgba(106,92,255,0.5)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg v-if="loading" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -522,14 +523,14 @@ async function handleOtpVerify() {
         </form>
 
         <div class="mt-6 text-center">
-          <RouterLink to="/" class="text-sm text-gray-500 hover:text-blue-600 transition">
+          <RouterLink to="/" class="text-sm text-white/60 hover:text-white transition">
             ← 返回首页
           </RouterLink>
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="text-center mt-6 text-white/60 text-sm">
+      <div class="anim-fade-up mt-6 text-center text-white/55 text-sm" style="animation-delay: 0.2s">
         <p>如有问题请联系管理员</p>
       </div>
     </div>

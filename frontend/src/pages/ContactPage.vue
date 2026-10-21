@@ -38,29 +38,28 @@ const renderedContent = computed(() => {
 </script>
 
 <template>
-  <section class="work-detail-page min-h-[calc(100vh-200px)] bg-white pb-[82px] pt-[27px]">
-    <div class="mx-auto w-full max-w-[1200px] px-[16px] xl:px-0">
-      <div class="detail-breadcrumb flex items-center gap-[7px] text-[#777]">
-        <i class="iconfont icon-shouye text-[#999999]"></i>
+  <section class="min-h-[calc(100vh-200px)] pb-[80px] pt-[28px]">
+    <div class="mx-auto w-full max-w-[1200px] px-[16px]">
+      <div class="flex items-center gap-[6px] text-[14px] text-[#86868b]">
         <span>您当前位置：</span>
-        <RouterLink to="/" class="text-[#047eff] hover:underline">首页</RouterLink>
+        <RouterLink to="/" class="text-[#0071e3] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
         <span>联系我们</span>
       </div>
 
-      <article class="mt-[19px] overflow-hidden rounded-[12px] bg-white shadow-[0_4px_18px_rgba(24,42,78,0.12)]">
-        <!-- Header -->
-        <div class="relative h-[150px] overflow-hidden bg-[#e7f8ff]">
-          <div class="absolute inset-0 bg-gradient-to-r from-[#0066cc]/80 to-[#004385]/80"></div>
-          <div class="absolute inset-0 flex flex-col justify-center px-[39px]">
-            <h1 class="text-[28px] font-[800] leading-[34px] text-white">联系我们</h1>
-            <p class="mt-[10px] text-[16px] text-white/80">2026年云南大学首届人工智能创新应用大赛组委会</p>
+      <article class="anim-fade-up mt-[20px] overflow-hidden rounded-[24px] border border-white/70 bg-white/85 shadow-[var(--shadow-card)] backdrop-blur-xl">
+        <!-- 绚丽渐变 Header -->
+        <div class="relative h-[160px] overflow-hidden bg-gradient-to-br from-[#0090ff] via-[#6a5cff] to-[#ff5ca8]">
+          <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15 blur-3xl"></div>
+          <div class="absolute inset-0 flex flex-col justify-center px-[36px] lg:px-[44px]">
+            <h1 class="text-[28px] font-[800] leading-[36px] text-white drop-shadow-lg">联系我们</h1>
+            <p class="mt-[10px] text-[15px] text-white/85">2026年云南大学首届人工智能创新应用大赛组委会</p>
           </div>
         </div>
 
         <!-- Content -->
-        <div class="px-[39px] pr-[12px] pb-[31px] pt-[17px]">
-          <div class="article-content detail-scroll" v-html="renderedContent"></div>
+        <div class="px-[32px] pb-[36px] pt-[24px] lg:px-[44px]">
+          <div class="article-content" v-html="renderedContent"></div>
         </div>
       </article>
     </div>
@@ -68,63 +67,27 @@ const renderedContent = computed(() => {
 </template>
 
 <style scoped>
-.detail-breadcrumb {
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.detail-scroll::-webkit-scrollbar,
-.detail-scroll::-webkit-scrollbar-thumb,
-.detail-scroll::-webkit-scrollbar-thumb:hover,
-.detail-scroll::-webkit-scrollbar-thumb:active {
-  background: #0a7fff;
-  height: 4px;
-  width: 5px;
-  border-radius: 3px;
-}
-
-.detail-scroll::-webkit-scrollbar-track {
-  background: #f0f0f0;
-  width: 5px;
-  border-radius: 3px;
-}
-
 .article-content {
   font-size: 16px;
-  line-height: 1.8;
-  color: #5f5f5f;
-}
-
-.article-content :deep(h1) {
-  font-size: 24px;
-  font-weight: 700;
-  color: #007dff;
-  margin: 24px 0 16px;
-  line-height: 1.4;
+  line-height: 1.9;
+  color: #3a3a3c;
 }
 
 .article-content :deep(h2) {
   font-size: 20px;
   font-weight: 700;
-  color: #007dff;
+  color: #1d1d1f;
   margin: 20px 0 14px;
-  line-height: 1.4;
-}
-
-.article-content :deep(h3) {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 18px 0 12px;
+  padding-left: 12px;
+  border-left: 4px solid;
+  border-image: linear-gradient(to bottom, #0090ff, #6a5cff) 1;
 }
 
 .article-content :deep(p) {
   margin: 12px 0;
-  text-indent: 2em;
 }
 
-.article-content :deep(ul),
-.article-content :deep(ol) {
+.article-content :deep(ul) {
   margin: 12px 0;
   padding-left: 2em;
 }
@@ -133,15 +96,8 @@ const renderedContent = computed(() => {
   margin: 8px 0;
 }
 
-.article-content :deep(code) {
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-}
-
 .article-content :deep(a) {
-  color: #007dff;
+  color: #0071e3;
   text-decoration: none;
 }
 
@@ -149,27 +105,10 @@ const renderedContent = computed(() => {
   text-decoration: underline;
 }
 
-.article-content :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
+.article-content :deep(img) {
+  max-width: 100%;
+  border-radius: 16px;
   margin: 16px 0;
-}
-
-.article-content :deep(th),
-.article-content :deep(td) {
-  border: 1px solid #ddd;
-  padding: 10px 14px;
-  text-align: left;
-}
-
-.article-content :deep(th) {
-  background: #f5f5f5;
-  font-weight: 600;
-}
-
-@media (max-width: 767px) {
-  .work-detail-page {
-    padding-top: 20px;
-  }
+  box-shadow: var(--shadow-card);
 }
 </style>

@@ -39,6 +39,19 @@ let searchTimeout: number | null = null
 
 const totalPages = computed(() => Math.ceil(filteredAgents.value.length / pageSize))
 
+// 分类胶囊的绚丽配色
+const categoryHues = [
+  'from-[#0090ff] to-[#00c6ff]',
+  'from-[#6a5cff] to-[#a18cd1]',
+  'from-[#ff5ca8] to-[#ff9f45]',
+  'from-[#30d158] to-[#00c6ff]',
+  'from-[#ff9f0a] to-[#ff5ca8]'
+]
+
+function categoryHue(index: number) {
+  return categoryHues[index % categoryHues.length]
+}
+
 onMounted(async () => {
   if (route.query.category) {
     selectedCategory.value = route.query.category as string
@@ -140,130 +153,146 @@ watch(keyword, handleKeywordInput)
 </script>
 
 <template>
-  <section class="works-page min-h-[calc(100vh-200px)] bg-white pb-[72px] pt-[24px]">
+  <section class="min-h-[calc(100vh-200px)] pb-[80px] pt-[28px]">
     <div class="mx-auto max-w-[1200px] px-[16px]">
-      <div class="works-breadcrumb flex items-center gap-[6px] text-[14px] text-[#666] font-[400]">
-        <i class="iconfont icon-shouye text-[#999999]"></i>
+      <div class="flex items-center gap-[6px] text-[14px] text-[#86868b]">
         <span>您当前位置：</span>
-        <RouterLink to="/" class="text-[#047EFF] hover:underline">首页</RouterLink>
+        <RouterLink to="/" class="text-[#0071e3] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
         <span>智能体广场</span>
       </div>
 
-      <!-- 搜索框 -->
-      <div class="mt-[24px] flex justify-center">
-        <div class="relative w-[460px]">
+      <!-- 页头 -->
+      <div class="anim-fade-up mt-[28px] text-center">
+        <h1 class="text-[34px] font-[700] lg:text-[44px]"><span class="text-gradient">智能体广场</span></h1>
+        <p class="mt-[10px] text-[15px] text-[#86868b]">探索同学们创造的智能体</p>
+      </div>
+
+      <!-- 搜索框：胶囊 -->
+      <div class="anim-fade-up mt-[28px] flex justify-center">
+        <div class="glass flex w-full max-w-[520px] items-center gap-[10px] rounded-full p-[6px] pl-[20px] shadow-[var(--shadow-card)] transition-shadow duration-300 focus-within:shadow-[0_0_0_4px_rgba(0,113,227,0.15),var(--shadow-card)]">
+          <svg class="h-[18px] w-[18px] shrink-0 text-[#86868b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
           <input
             v-model="keyword"
             type="text"
             placeholder="搜索智能体名称或描述..."
-            class="works-search w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-[#f5f5f5]"
+            class="h-[40px] flex-1 border-0 bg-transparent text-[15px] text-[#1d1d1f] outline-none placeholder:text-[#a1a1a6]"
             @keyup.enter="handleKeywordInput"
           />
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#b8bdc6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
         </div>
       </div>
 
       <!-- Sort Buttons -->
-      <div class="mt-[20px] flex justify-center gap-[10px]">
+      <div class="anim-fade-up mt-[20px] flex justify-center gap-[10px]">
         <button
           @click="handleSortChange('latest')"
-          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-          :class="sort === 'latest' ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+          class="rounded-full px-[20px] py-[9px] text-[14px] font-[500] transition-all duration-300"
+          :class="sort === 'latest'
+            ? 'bg-gradient-to-r from-[#0090ff] to-[#00c6ff] text-white shadow-[0_6px_18px_rgba(0,144,255,0.35)]'
+            : 'bg-white text-[#515154] shadow-[0_2px_10px_rgba(29,42,68,0.07)] hover:shadow-[0_6px_18px_rgba(29,42,68,0.12)] hover:-translate-y-0.5'"
         >
           最新上架
         </button>
         <button
           @click="handleSortChange('popular')"
-          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-          :class="sort === 'popular' ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+          class="rounded-full px-[20px] py-[9px] text-[14px] font-[500] transition-all duration-300"
+          :class="sort === 'popular'
+            ? 'bg-gradient-to-r from-[#ff5ca8] to-[#ff9f45] text-white shadow-[0_6px_18px_rgba(255,92,168,0.35)]'
+            : 'bg-white text-[#515154] shadow-[0_2px_10px_rgba(29,42,68,0.07)] hover:shadow-[0_6px_18px_rgba(29,42,68,0.12)] hover:-translate-y-0.5'"
         >
           最受欢迎
         </button>
       </div>
 
       <!-- Category Tabs -->
-      <div class="mt-[20px] flex flex-wrap gap-[10px]">
+      <div class="anim-fade-up mt-[20px] flex flex-wrap justify-center gap-[10px]">
         <button
-          v-for="cat in categories"
+          v-for="(cat, index) in categories"
           :key="cat.Code"
           @click="selectCategory(cat.Code)"
-          class="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-          :class="selectedCategory === cat.Code ? 'bg-[#0d8bff] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
+          class="rounded-full px-[15px] py-[7px] text-[13px] font-[500] transition-all duration-300"
+          :class="selectedCategory === cat.Code
+            ? `bg-gradient-to-r ${categoryHue(index)} text-white shadow-[0_6px_16px_rgba(106,92,255,0.3)]`
+            : 'bg-white text-[#515154] shadow-[0_2px_8px_rgba(29,42,68,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_14px_rgba(29,42,68,0.1)]'"
         >
           {{ cat.Name }}
         </button>
       </div>
 
       <!-- Results Count -->
-      <div class="mt-[20px] text-sm text-gray-500 text-center">
+      <div class="mt-[24px] text-center text-[14px] text-[#86868b]">
         共 {{ filteredAgents.length }} 个智能体
         <span v-if="keyword"> · 搜索 "{{ keyword }}"</span>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="mt-[36px] text-center py-16">
-        <div class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-3 text-gray-500">加载中...</p>
+      <div v-if="loading" class="mt-[48px] text-center py-16">
+        <div class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#0071e3]/20 border-t-[#0071e3]"></div>
+        <p class="mt-3 text-[#86868b]">加载中...</p>
       </div>
 
       <!-- Error -->
-      <div v-else-if="error" class="mt-[36px] text-center py-16">
-        <p class="text-red-500 mb-1">{{ error }}</p>
-        <p class="text-gray-400 text-sm">请检查火山引擎 API 配置是否正确</p>
+      <div v-else-if="error" class="mt-[48px] text-center py-16">
+        <p class="mb-1 text-[#ff3b30]">{{ error }}</p>
+        <p class="text-sm text-[#86868b]">请检查火山引擎 API 配置是否正确</p>
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filteredAgents.length === 0" class="mt-[36px] text-center py-16">
-        <p class="text-gray-500">暂无智能体</p>
-        <p class="text-gray-400 text-sm mt-1">换个关键词试试</p>
+      <div v-else-if="filteredAgents.length === 0" class="mt-[48px] text-center py-16">
+        <p class="text-[#86868b]">暂无智能体</p>
+        <p class="mt-1 text-sm text-[#a1a1a6]">换个关键词试试</p>
       </div>
 
       <!-- Agent Grid -->
-      <div v-else class="mt-[30px] grid grid-cols-1 gap-x-[24px] gap-y-[24px] sm:grid-cols-2 lg:grid-cols-4">
+      <div v-else class="anim-stagger mt-[36px] grid grid-cols-1 gap-x-[24px] gap-y-[24px] sm:grid-cols-2 lg:grid-cols-4">
         <article
           v-for="(agent, index) in filteredAgents"
           :key="agent.AppID"
-          class="agent-card cursor-pointer rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+          class="apple-card apple-card-hover group cursor-pointer overflow-hidden p-0"
           @click="openAgent(agent.AppID)"
         >
           <!-- Row 1: Logo + Title/Submitter -->
-          <div class="flex items-start gap-3 p-4">
-            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div class="flex items-start gap-3 p-[18px] pb-[12px]">
+            <div
+              class="h-[54px] w-[54px] shrink-0 overflow-hidden rounded-[16px] shadow-[0_8px_20px_rgba(29,42,68,0.18)] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
+              :class="`bg-gradient-to-br ${categoryHue(index)}`"
+            >
               <img
                 v-if="agent.Image"
                 :src="agentCenterApi.getImageUrl(agent.Image)"
-                class="w-full h-full object-cover"
+                class="h-full w-full object-cover"
                 @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
               />
-              <span v-else class="text-white text-xl font-bold">AI</span>
+              <span v-else class="flex h-full w-full items-center justify-center text-[18px] font-[800] text-white">AI</span>
             </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="text-base font-semibold text-gray-800 truncate leading-tight">
+            <div class="min-w-0 flex-1">
+              <h3 class="truncate text-[16px] font-[700] leading-tight text-[#1d1d1f] transition-colors duration-300 group-hover:text-[#0071e3]">
                 {{ agent.Name }}
               </h3>
-              <p class="text-xs text-gray-400 mt-0.5">
+              <p class="mt-1 text-[12px] text-[#a1a1a6]">
                 by {{ agent.SubmitUserName || '未知' }}
               </p>
             </div>
           </div>
 
           <!-- Row 2: Description -->
-          <div class="px-4 pb-3">
-            <p class="text-sm text-gray-500 truncate leading-normal h-5 overflow-hidden">
+          <div class="px-[18px] pb-[10px]">
+            <p class="h-5 truncate text-[13px] leading-5 text-[#86868b]">
               {{ agent.Description || '暂无描述' }}
             </p>
           </div>
 
           <!-- Row 3: Category Tags -->
-          <div class="px-4 pb-3">
-            <div class="flex flex-wrap gap-1.5">
+          <div class="px-[18px] pb-[12px]">
+            <div class="flex flex-wrap gap-[6px]">
               <span
-                v-for="cat in (agent.CategoryList || []).slice(0, 3)"
+                v-for="(cat, ci) in (agent.CategoryList || []).slice(0, 3)"
                 :key="cat.CategoryCode"
-                class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full font-medium"
+                class="rounded-full px-[9px] py-[3px] text-[11px] font-[500]"
+                :class="`bg-gradient-to-r ${categoryHue(Number(ci))} bg-clip-text`"
+                style="color: transparent; background-clip: text; -webkit-background-clip: text; border: 1px solid rgba(120,120,128,0.18)"
               >
                 {{ cat.CategoryName }}
               </span>
@@ -271,18 +300,15 @@ watch(keyword, handleKeywordInput)
           </div>
 
           <!-- Row 4: Stats -->
-          <div class="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100 text-left space-x-4">
-            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-              <span>⭐</span>
-              {{ agent.FavoriteCount || 0 }}
+          <div class="flex space-x-4 border-t border-black/[0.05] bg-black/[0.02] px-[18px] py-[10px] text-[12px] text-[#86868b]">
+            <span class="inline-flex items-center gap-1">
+              <span>⭐</span> {{ agent.FavoriteCount || 0 }}
             </span>
-            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-              <span>📖</span>
-              {{ agent.UseCount || 0 }}
+            <span class="inline-flex items-center gap-1">
+              <span>📖</span> {{ agent.UseCount || 0 }}
             </span>
-            <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-              <span>💬</span>
-              {{ agent.ChatCount || 0 }}
+            <span class="inline-flex items-center gap-1">
+              <span>💬</span> {{ agent.ChatCount || 0 }}
             </span>
           </div>
         </article>
@@ -296,52 +322,9 @@ watch(keyword, handleKeywordInput)
           layout="prev, pager, next"
           :page-size="pageSize"
           :total="filteredAgents.length"
-          class="works-pagination"
           @current-change="handlePageChange"
         />
       </div>
     </div>
   </section>
 </template>
-
-<style scoped>
-.works-page {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 34%, #ffffff 100%);
-}
-
-.works-breadcrumb {
-  --el-text-color-regular: #8f96a3;
-  --el-color-primary: #1288ff;
-  font-size: 14px;
-}
-
-.agent-card {
-  display: flex;
-  flex-direction: column;
-  min-height: 180px;
-}
-
-.works-pagination :deep(.el-pager li),
-.works-pagination :deep(.btn-prev),
-.works-pagination :deep(.btn-next) {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  border-radius: 0;
-  background-color: #f0f1f3;
-  color: #a7adb7;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.works-pagination :deep(.el-pager li.is-active) {
-  background-color: #1288ff;
-  color: #ffffff;
-}
-
-@media (min-width: 1024px) {
-  .works-page > div {
-    max-width: 1190px;
-  }
-}
-</style>

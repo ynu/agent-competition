@@ -48,55 +48,62 @@ async function fetchArticles() {
 </script>
 
 <template>
-  <section class="article-list-page min-h-[calc(100vh-200px)] bg-white pb-[69px] pt-[27px]">
-    <div class="mx-auto w-full max-w-[1200px] px-[16px] xl:px-0">
-      <div class="article-list-breadcrumb flex items-center gap-[7px] text-[#777]">
-        <i class="iconfont icon-shouye text-[#999999]"></i>
+  <section class="min-h-[calc(100vh-200px)] pb-[80px] pt-[28px]">
+    <div class="mx-auto w-full max-w-[1200px] px-[16px]">
+      <div class="flex items-center gap-[6px] text-[14px] text-[#86868b]">
         <span>您当前位置：</span>
-        <RouterLink to="/" class="text-[#047eff] hover:underline">首页</RouterLink>
+        <RouterLink to="/" class="text-[#0071e3] hover:underline">首页</RouterLink>
         <span class="mx-1">/</span>
         <span>新闻列表</span>
       </div>
 
+      <!-- 页头 -->
+      <div class="anim-fade-up mt-[28px] text-center">
+        <h1 class="text-[34px] font-[700] lg:text-[44px]"><span class="text-gradient">新闻资讯</span></h1>
+        <p class="mt-[10px] text-[15px] text-[#86868b]">大赛动态，一手掌握</p>
+      </div>
+
       <!-- Loading -->
-      <div v-if="loading" class="mt-[36px] text-center py-16">
-        <div class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-3 text-gray-500">加载中...</p>
+      <div v-if="loading" class="mt-[48px] text-center py-16">
+        <div class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#0071e3]/20 border-t-[#0071e3]"></div>
+        <p class="mt-3 text-[#86868b]">加载中...</p>
       </div>
 
       <!-- Article List -->
-      <div v-else class="mt-[36px]">
+      <div v-else class="anim-stagger mt-[44px] grid content-start gap-[16px]">
         <button
           v-for="article in articles"
           :key="article.id"
           type="button"
-          class="article-item group grid w-full grid-cols-[80px_1fr] gap-[22px] border-0 border-b border-dashed border-[#e1e1e1] bg-transparent pb-[16px] pt-[16px] text-left first:pt-0"
+          class="apple-card apple-card-hover group grid w-full grid-cols-[74px_1fr] items-center gap-[20px] border-0 p-[18px] text-left cursor-pointer"
           @click="openArticle(article)"
         >
           <time
-            class="flex h-[74px] w-[80px] flex-col items-center justify-center text-white transition-colors duration-200 bg-[#b4b4b4] group-hover:bg-[#087fff]"
+            class="news-date flex h-[72px] w-[74px] flex-col items-center justify-center rounded-[18px] text-white transition-all duration-300"
             :datetime="article.created_at"
           >
-            <span class="text-[28px] font-[700] leading-[32px]">{{ formatDate(article.created_at).day }}</span>
-            <span class="mt-[8px] text-[16px] leading-[18px]">{{ formatDate(article.created_at).month }}</span>
+            <span class="text-[26px] font-[800] leading-[32px]">{{ formatDate(article.created_at).day }}</span>
+            <span class="mt-[4px] text-[13px] opacity-85">{{ formatDate(article.created_at).month }}</span>
           </time>
 
-          <div class="min-w-0 pt-[4px]">
-            <h2
-              class="line-clamp-1 text-[16px] font-[500] leading-[24px] transition-colors duration-200 text-[#202020] group-hover:text-[#007dff]"
-            >
+          <div class="min-w-0">
+            <h2 class="line-clamp-1 text-[17px] font-[600] text-[#1d1d1f] transition-colors duration-300 group-hover:text-[#0071e3]">
               {{ article.title }}
             </h2>
-            <p class="mt-[8px] line-clamp-2 text-[12px] leading-[20px] text-[#999]">
+            <p class="mt-[8px] line-clamp-2 text-[13px] leading-[21px] text-[#86868b]">
               {{ article.summary || article.content?.substring(0, 150) || '暂无摘要' }}
             </p>
           </div>
+
+          <span class="hidden h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-[#0071e3]/8 text-[#0071e3] transition-transform duration-300 group-hover:translate-x-1 sm:flex">
+            →
+          </span>
         </button>
 
         <!-- Empty State -->
-        <div v-if="articles.length === 0" class="text-center py-16">
-          <p class="text-gray-500">暂无新闻资讯</p>
-          <p class="text-gray-400 text-sm mt-1">请在后台添加新闻资讯</p>
+        <div v-if="articles.length === 0" class="apple-card text-center py-16">
+          <p class="text-[#86868b]">暂无新闻资讯</p>
+          <p class="mt-1 text-sm text-[#a1a1a6]">请在后台添加新闻资讯</p>
         </div>
       </div>
 
@@ -108,7 +115,6 @@ async function fetchArticles() {
           layout="prev, pager, next"
           :page-size="pageSize"
           :total="total"
-          class="article-pagination"
           @current-change="handlePageChange"
         />
       </div>
@@ -117,52 +123,12 @@ async function fetchArticles() {
 </template>
 
 <style scoped>
-.article-list-breadcrumb {
-  font-size: 14px;
-  line-height: 20px;
+.news-date {
+  background: linear-gradient(135deg, #c7c7cc 0%, #a1a1a6 100%);
 }
 
-.article-item {
-  cursor: pointer;
-}
-
-.article-pagination :deep(.el-pager li),
-.article-pagination :deep(.btn-prev),
-.article-pagination :deep(.btn-next) {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  border-radius: 3px;
-  background-color: #eeeeee;
-  color: #9c9c9c;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.article-pagination :deep(.el-pager li.is-active) {
-  background-color: #087fff;
-  color: #ffffff;
-}
-
-.article-pagination :deep(.btn-prev),
-.article-pagination :deep(.btn-next) {
-  color: #b0b0b0;
-}
-
-@media (max-width: 767px) {
-  .article-list-page {
-    padding-top: 20px;
-  }
-
-  .article-item {
-    grid-template-columns: 68px 1fr;
-    gap: 16px;
-    padding-bottom: 18px;
-    padding-top: 18px;
-  }
-
-  .article-item time {
-    width: 68px;
-  }
+.group:hover .news-date {
+  background: var(--gradient-blue);
+  box-shadow: 0 8px 20px rgba(0, 113, 227, 0.32);
 }
 </style>
