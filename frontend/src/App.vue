@@ -188,7 +188,7 @@ onUnmounted(() => {
                 <span class="text-xl text-white">🤖</span>
               </div>
               <div v-if="!sidebarCollapsed" class="flex flex-col">
-                <span class="whitespace-nowrap text-lg font-bold text-white">智能体大赛</span>
+                <span class="whitespace-nowrap text-lg font-bold text-white">云南大学AI门户</span>
                 <span class="whitespace-nowrap text-xs text-white/45">管理后台</span>
               </div>
             </RouterLink>

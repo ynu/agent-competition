@@ -32,6 +32,11 @@ const router = createRouter({
           component: () => import('@/pages/AgentCenterPage.vue')
         },
         {
+          path: 'competition-plan',
+          name: 'competition-plan',
+          component: () => import('@/pages/CompetitionPlanPage.vue')
+        },
+        {
           path: 'news',
           name: 'news-list',
           component: () => import('@/pages/NewsListPage.vue')

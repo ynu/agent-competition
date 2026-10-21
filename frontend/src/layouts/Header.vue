@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
   {
     label: '智能体大赛',
     children: [
+      { label: '大赛方案', path: '/competition-plan' },
       { label: '作品提交', externalUrl: externalLinks.submitWork },
       { label: '参赛作品', path: '/works' },
       { label: '课程资料', path: '/materials' },
@@ -377,9 +378,9 @@ const handleLogout = () => {
 </template>
 
 <style scoped>
-/* 子菜单面板：在通用毛玻璃基础上提高不透明度，避免文字与页面内容重叠 */
+/* 子菜单面板：完全不透明，避免文字与页面内容重叠 */
 .dropdown-panel {
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
 }
 
 /* 导航项 hover 特效：文字轻微上浮 + 渐变光点浮现 */
