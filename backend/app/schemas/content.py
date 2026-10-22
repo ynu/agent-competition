@@ -3,7 +3,7 @@
 """
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.models.content import ContentType, ContentContentType
 
 
@@ -21,6 +21,19 @@ class ContentBase(BaseModel):
     summary: Optional[str] = Field(None, max_length=500)
     author: Optional[str] = Field(None, max_length=100)
     cover_image: Optional[str] = Field(None, max_length=500)
+    # 快捷入口特有字段
+    category: Optional[str] = Field(None, max_length=100)
+    tags: Optional[str] = Field(None, max_length=500)
+    external_url: Optional[str] = Field(None, max_length=500)
+    icon: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("slug", "category", "tags", "external_url", "icon", "summary", "author", "cover_image", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        """空字符串视为未填写"""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 # 内容创建 schema
@@ -41,6 +54,18 @@ class ContentUpdate(BaseModel):
     summary: Optional[str] = Field(None, max_length=500)
     author: Optional[str] = Field(None, max_length=100)
     cover_image: Optional[str] = Field(None, max_length=500)
+    category: Optional[str] = Field(None, max_length=100)
+    tags: Optional[str] = Field(None, max_length=500)
+    external_url: Optional[str] = Field(None, max_length=500)
+    icon: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("slug", "category", "tags", "external_url", "icon", "summary", "author", "cover_image", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        """空字符串视为未填写"""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 # 内容响应 schema

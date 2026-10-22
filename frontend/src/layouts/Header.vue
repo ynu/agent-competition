@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { aiToolsApi } from '@/api'
 import logoTop from '@/assets/images/logo.png'
 
 const router = useRouter()
@@ -17,6 +18,18 @@ const externalLinks = {
   signup: '/login',
 }
 
+// AI工具二级菜单（快捷入口分类），动态加载
+const aitoolCategories = ref<string[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await aiToolsApi.categories()
+    aitoolCategories.value = (res.data || []).map((c: any) => c.name)
+  } catch (e) {
+    // 加载失败时隐藏二级菜单即可
+  }
+})
+
 interface NavLeaf {
   label: string
   path?: string
@@ -27,9 +40,21 @@ interface NavItem extends NavLeaf {
   children?: NavLeaf[]
 }
 
-const navItems: NavItem[] = [
+const navItems = computed<NavItem[]>(() => [
   { label: '首页', path: '/' },
   { label: '创建智能体', externalUrl: externalLinks.createAgent },
+  {
+    label: 'AI工具',
+    path: '/aitools',
+    ...(aitoolCategories.value.length
+      ? {
+          children: aitoolCategories.value.map((name) => ({
+            label: name,
+            path: `/aitools#${name}`,
+          })),
+        }
+      : {}),
+  },
   {
     label: '智能体大赛',
     children: [
@@ -42,7 +67,7 @@ const navItems: NavItem[] = [
   { label: '智能体广场', externalUrl: externalLinks.agentPlaza },
   { label: '大模型服务平台', externalUrl: externalLinks.llmPlatform },
   { label: '联系我们', path: '/page/contact' },
-]
+])
 
 const openExternal = (url: string) => {
   if (url.startsWith('http')) {
@@ -57,8 +82,13 @@ const goTo = (item: NavLeaf) => {
     openExternal(item.externalUrl)
     return
   }
-  if (item.path && route.path !== item.path) {
-    router.push(item.path)
+  if (item.path) {
+    if (route.path !== item.path) {
+      router.push(item.path)
+    } else {
+      // 相同路径（可能是锚点变化），回顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 }
 
@@ -75,7 +105,10 @@ const isChildActive = (item: NavItem) => {
 
 const isActivePath = (path: string) => {
   if (path === '/') return route.path === '/'
-  return route.path.startsWith(path)
+  // 路径可能带锚点（如 /aitools#分类名）
+  const [pathOnly, hash] = path.split('#')
+  if (hash && hash !== decodeURIComponent(route.hash.slice(1))) return false
+  return route.path.startsWith(pathOnly)
 }
 
 const isActive = (item: NavItem) => {
@@ -181,6 +214,7 @@ const handleLogout = () => {
               <div
                 v-if="hasChildren(item) && activeDropdown === item.label"
                 class="dropdown-panel absolute left-1/2 -translate-x-1/2 top-full min-w-[180px] whitespace-nowrap glass rounded-[20px] shadow-[0_20px_60px_rgba(29,42,68,0.18)] p-[8px]"
+                :class="{ 'cols-2': (item.children?.length || 0) > 6 }"
               >
                 <button
                   v-for="child in item.children"
@@ -381,6 +415,17 @@ const handleLogout = () => {
 /* 子菜单面板：完全不透明，避免文字与页面内容重叠 */
 .dropdown-panel {
   background: #ffffff;
+}
+
+/* AI工具分类较多时，子菜单双列排布 */
+.dropdown-panel.cols-2 {
+  min-width: 320px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dropdown-panel.cols-2 > button {
+  width: 50%;
 }
 
 /* 导航项 hover 特效：文字轻微上浮 + 渐变光点浮现 */

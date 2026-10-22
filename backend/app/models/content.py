@@ -13,6 +13,7 @@ class ContentType(str, enum.Enum):
     PAGE = "page"       # 页面
     CATEGORY = "category"  # 栏目
     ARTICLE = "article"    # 文章/新闻
+    SHORTCUT = "shortcut"  # 快捷入口（AI工具）
 
 
 class ContentContentType(str, enum.Enum):
@@ -46,6 +47,12 @@ class Content(Base):
     author = Column(String(100), nullable=True, comment="作者")
     cover_image = Column(String(500), nullable=True, comment="封面图片URL")
     view_count = Column(Integer, default=0, comment="浏览次数")
+
+    # 快捷入口特有字段
+    category = Column(String(100), nullable=True, comment="分类（快捷入口）")
+    tags = Column(String(500), nullable=True, comment="标签，逗号分隔（快捷入口）")
+    external_url = Column(String(500), nullable=True, comment="外部链接（快捷入口）")
+    icon = Column(String(500), nullable=True, comment="图标URL（快捷入口）")
 
     def __repr__(self):
         return f"<Content {self.title}>"

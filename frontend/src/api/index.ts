@@ -212,6 +212,14 @@ export const materialsApi = {
   getBySlug: (slug: string) => api.get(`/contents/slug/${slug}`)
 }
 
+// AI Tools APIs (AI工具箱/快捷入口)
+export const aiToolsApi = {
+  list: (params?: { category?: string; keyword?: string }) =>
+    api.get('/contents/aitools', { params }),
+  categories: () => api.get('/contents/aitools/categories'),
+  tags: () => api.get('/contents/aitools/tags')
+}
+
 // Media APIs (媒体管理)
 export const mediaApi = {
   listDirs: () => api.get('/media/dirs'),

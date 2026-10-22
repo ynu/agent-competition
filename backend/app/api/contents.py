@@ -3,6 +3,7 @@
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_optional, require_role
@@ -55,7 +56,9 @@ async def get_contents(
         query = query.filter(
             Content.title.ilike(f"%{keyword}%") |
             Content.slug.ilike(f"%{keyword}%") |
-            Content.summary.ilike(f"%{keyword}%")
+            Content.summary.ilike(f"%{keyword}%") |
+            Content.category.ilike(f"%{keyword}%") |
+            Content.tags.ilike(f"%{keyword}%")
         )
 
     # 如果 is_published 显式传递了值（包括 false），使用该值过滤
@@ -97,6 +100,77 @@ async def get_content_tree(
         return response
 
     return [build_tree(c) for c in contents]
+
+
+@router.get("/aitools", response_model=List[ContentResponse])
+async def get_aitools(
+    category: Optional[str] = None,
+    keyword: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取快捷入口（AI工具）列表"""
+    query = db.query(Content).filter(
+        Content.type == ContentType.SHORTCUT,
+        Content.is_published == True
+    )
+
+    if category:
+        query = query.filter(Content.category == category)
+
+    if keyword:
+        kw = f"%{keyword}%"
+        query = query.filter(
+            Content.title.ilike(kw) |
+            Content.summary.ilike(kw) |
+            Content.tags.ilike(kw) |
+            Content.category.ilike(kw)
+        )
+
+    tools = query.order_by(Content.category, Content.order, Content.created_at.desc()).all()
+    return [ContentResponse.model_validate(t) for t in tools]
+
+
+@router.get("/aitools/categories", response_model=List[dict])
+async def get_aitool_categories(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取快捷入口的分类列表（含各分类数量）"""
+    rows = (
+        db.query(Content.category, func.count(Content.id))
+        .filter(
+            Content.type == ContentType.SHORTCUT,
+            Content.is_published == True,
+            Content.category != None,
+            Content.category != ""
+        )
+        .group_by(Content.category)
+        .order_by(func.min(Content.order))
+        .all()
+    )
+    return [{"name": name, "count": count} for name, count in rows]
+
+
+@router.get("/aitools/tags", response_model=List[str])
+async def get_aitool_tags(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_active_user_optional)
+):
+    """获取快捷入口的所有标签（去重）"""
+    rows = db.query(Content.tags).filter(
+        Content.type == ContentType.SHORTCUT,
+        Content.is_published == True,
+        Content.tags != None,
+        Content.tags != ""
+    ).all()
+    tags = []
+    for (tags_str,) in rows:
+        for t in (tags_str or "").split(","):
+            t = t.strip()
+            if t and t not in tags:
+                tags.append(t)
+    return tags
 
 
 @router.get("/articles", response_model=PageResponse)
@@ -228,6 +302,9 @@ async def create_content(
         elif content_data.type == ContentType.PAGE:
             # 课程资料自动生成 slug
             slug = f"page-{content_data.title}"
+        elif content_data.type == ContentType.SHORTCUT:
+            # 快捷入口自动生成 slug
+            slug = f"aitool-{content_data.title}"
         else:
             # 栏目必须有 slug
             raise HTTPException(status_code=400, detail="栏目必须提供 slug")
@@ -247,7 +324,11 @@ async def create_content(
         is_published=content_data.is_published,
         summary=content_data.summary,
         author=content_data.author,
-        cover_image=content_data.cover_image
+        cover_image=content_data.cover_image,
+        category=content_data.category,
+        tags=content_data.tags,
+        external_url=content_data.external_url,
+        icon=content_data.icon
     )
     db.add(content)
     db.commit()

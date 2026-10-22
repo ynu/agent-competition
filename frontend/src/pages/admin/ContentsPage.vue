@@ -5,6 +5,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import Dialog from '@/components/Dialog.vue'
 import FileSelector from '@/components/FileSelector.vue'
 import FileInput from '@/components/FileInput.vue'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { useNotification } from '@/composables/useNotification'
 import markdownIt from 'markdown-it'
 import { mediaPlugin } from '@/plugins/markdown'
@@ -52,11 +53,54 @@ const formData = ref({
   content: '',
   content_format: 'markdown',
   is_published: false,
-  order: 0,
+  order: '' as number | '',
   summary: '',
   author: '',
-  cover_image: ''
+  cover_image: '',
+  category: '',
+  tags: [] as string[],
+  external_url: '',
+  icon: ''
 })
+
+// 标签输入（空格自动添加）
+const tagInput = ref('')
+
+function commitTag(raw: string) {
+  const tag = raw.trim().replace(/,$/, '')
+  if (!tag) return
+  if (!formData.value.tags.includes(tag)) {
+    formData.value.tags.push(tag)
+  }
+  tagInput.value = ''
+}
+
+function addTagFromInput() {
+  tagInput.value
+    .split(/[,,]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach(commitTag)
+  tagInput.value = ''
+}
+
+function removeTag(tag: string) {
+  formData.value.tags = formData.value.tags.filter((t) => t !== tag)
+}
+
+// 标签颜色（与前台 AI工具页保持一致）
+const tagColors: Record<string, string> = {
+  '免费': 'bg-[#0071e3]/10 text-[#0071e3] border-[#0071e3]/20',
+  '限免': 'bg-[#ff9f0a]/12 text-[#c77800] border-[#ff9f0a]/25',
+  'AI门户': 'bg-[#6a5cff]/10 text-[#6a5cff] border-[#6a5cff]/20',
+  '搜索引擎': 'bg-[#30d158]/12 text-[#1f9d41] border-[#30d158]/25',
+  '模型训练部署': 'bg-[#ff5ca8]/10 text-[#e0447f] border-[#ff5ca8]/20',
+  '外语学习': 'bg-[#00c6ff]/12 text-[#0087c8] border-[#00c6ff]/25'
+}
+
+function tagClass(tag: string) {
+  return tagColors[tag] || 'bg-[#86868b]/10 text-[#515154] border-[#86868b]/20'
+}
 
 const selectedCount = computed(() => selectedContents.value.size)
 const allSelected = computed(() => contents.value.length > 0 && selectedContents.value.size === contents.value.length)
@@ -143,7 +187,8 @@ const typeOptions = [
   { value: '', label: '全部类型' },
   { value: 'page', label: '课程资料' },
   { value: 'category', label: '栏目' },
-  { value: 'article', label: '新闻资讯' }
+  { value: 'article', label: '新闻资讯' },
+  { value: 'shortcut', label: '快捷入口' }
 ]
 
 const publishedOptions = [
@@ -155,11 +200,30 @@ const publishedOptions = [
 const formTypeOptions = [
   { value: 'page', label: '课程资料' },
   { value: 'category', label: '栏目' },
-  { value: 'article', label: '新闻资讯' }
+  { value: 'article', label: '新闻资讯' },
+  { value: 'shortcut', label: '快捷入口' }
 ]
+
+// 快捷入口：已有标签与分类（从现有数据中提取）
+const existingTags = ref<string[]>([])
+const existingCategories = ref<string[]>([])
+
+async function fetchShortcutMeta() {
+  try {
+    const [tagsRes, catsRes] = await Promise.all([
+      api.get('/contents/aitools/tags'),
+      api.get('/contents/aitools/categories')
+    ])
+    existingTags.value = tagsRes.data || []
+    existingCategories.value = (catsRes.data || []).map((c: any) => c.name)
+  } catch (e) {
+    // 忽略，下拉为空即可
+  }
+}
 
 onMounted(() => {
   fetchContents()
+  fetchShortcutMeta()
 })
 
 async function fetchContents() {
@@ -192,11 +256,16 @@ function openCreate() {
     content: '',
     content_format: 'markdown',
     is_published: false,
-    order: contents.value.length,
+    order: '',
     summary: '',
     author: '',
-    cover_image: ''
+    cover_image: '',
+    category: '',
+    tags: [],
+    external_url: '',
+    icon: ''
   }
+  tagInput.value = ''
   previewMode.value = false
   showModal.value = true
 }
@@ -213,15 +282,44 @@ function openEdit(content: any) {
     order: content.order || 0,
     summary: content.summary || '',
     author: content.author || '',
-    cover_image: content.cover_image || ''
+    cover_image: content.cover_image || '',
+    category: content.category || '',
+    tags: (content.tags || '')
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean),
+    external_url: content.external_url || '',
+    icon: content.icon || ''
   }
+  tagInput.value = ''
   previewMode.value = false
   showModal.value = true
 }
 
 async function handleSave() {
   try {
-    const data = { ...formData.value }
+    const data: any = { ...formData.value }
+    // 排序为可选：留空时后端默认 0
+    if (data.order === '' || data.order === null || data.order === undefined) {
+      delete data.order
+    }
+    // 标签数组转逗号分隔字符串（仅快捷入口）
+    if (data.type === 'shortcut') {
+      data.tags = formData.value.tags.join(',')
+      delete data.author
+      delete data.cover_image
+      data.content_format = 'markdown'
+    } else {
+      delete data.category
+      delete data.tags
+      delete data.external_url
+      delete data.icon
+    }
+    // 栏目必须填写 slug
+    if (data.type === 'category' && !String(data.slug || '').trim()) {
+      error('操作失败', '栏目必须填写 Slug')
+      return
+    }
     if (editingContent.value) {
       await api.put(`/contents/${editingContent.value.id}`, data)
     } else {
@@ -230,6 +328,7 @@ async function handleSave() {
     showModal.value = false
     success('保存成功')
     await fetchContents()
+    if (data.type === 'shortcut') fetchShortcutMeta()
   } catch (e: any) {
     error('操作失败', e.response?.data?.detail)
   }
@@ -266,7 +365,7 @@ function handlePageChange(newPage: number) {
 }
 
 function getTypeLabel(type: string) {
-  const map: Record<string, string> = { page: '课程资料', category: '栏目', article: '新闻资讯' }
+  const map: Record<string, string> = { page: '课程资料', category: '栏目', article: '新闻资讯', shortcut: '快捷入口' }
   return map[type] || type
 }
 
@@ -274,7 +373,8 @@ function getTypeClass(type: string) {
   const map: Record<string, string> = {
     page: 'bg-blue-100 text-blue-700',
     category: 'bg-purple-100 text-purple-700',
-    article: 'bg-green-100 text-green-700'
+    article: 'bg-green-100 text-green-700',
+    shortcut: 'bg-orange-100 text-orange-700'
   }
   return map[type] || 'bg-gray-100 text-gray-700'
 }
@@ -528,6 +628,12 @@ function sortMoveDown(index: number) {
               <button @click="openEdit(content)" class="text-left hover:text-blue-600 hover:underline">
                 {{ content.title }}
               </button>
+              <span
+                v-if="content.type === 'shortcut'"
+                class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700"
+              >
+                {{ content.category }}
+              </span>
             </td>
             <td class="px-6 py-4 text-sm hidden">{{ content.slug }}</td>
             <td class="px-6 py-4 text-sm hidden">{{ content.type }}</td>
@@ -602,6 +708,29 @@ function sortMoveDown(index: number) {
       @close="showModal = false"
     >
       <form @submit.prevent="handleSave" class="p-6 space-y-5 overflow-y-auto flex-1">
+          <!-- 类型（第一项）+ 排序 -->
+          <div class="grid md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">类型 <span class="text-red-500">*</span></label>
+              <select
+                v-model="formData.type"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+              >
+                <option v-for="opt in formTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">排序（选填）</label>
+              <input
+                v-model.number="formData.order"
+                type="number"
+                placeholder="留空默认为 0"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- 标题 + Slug（仅栏目显示） -->
           <div class="grid md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">标题 <span class="text-red-500">*</span></label>
@@ -612,43 +741,130 @@ function sortMoveDown(index: number) {
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
-            <div>
+            <div v-if="formData.type === 'category'">
               <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Slug
-                <span v-if="formData.type === 'category'" class="text-red-500">*</span>
+                Slug <span class="text-red-500">*</span>
               </label>
               <input
                 v-model="formData.slug"
                 type="text"
-                :required="formData.type === 'category'"
-                :placeholder="formData.type === 'category' ? 'url-slug (栏目必须)' : '留空自动生成'"
+                required
+                placeholder="url-slug (栏目必须)"
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm"
               />
-              <p v-if="formData.type !== 'category'" class="text-xs text-gray-500 mt-1">
-                课程资料和新闻资讯会自动生成 slug，栏目必须手动填写
-              </p>
+              <p class="text-xs text-gray-500 mt-1">仅栏目需要手动填写 Slug，其他类型自动生成</p>
             </div>
           </div>
 
-          <div class="grid md:grid-cols-2 gap-5">
+          <!-- Shortcut (快捷入口) fields -->
+          <template v-if="formData.type === 'shortcut'">
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                  分类 <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="formData.category"
+                  type="text"
+                  list="aitool-category-list"
+                  required
+                  placeholder="如：对话聊天"
+                  class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+                <datalist id="aitool-category-list">
+                  <option v-for="cat in existingCategories" :key="cat" :value="cat" />
+                </datalist>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">外部链接 <span class="text-red-500">*</span></label>
+                <input
+                  v-model="formData.external_url"
+                  type="url"
+                  required
+                  placeholder="https://..."
+                  class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <!-- 标签：输入空格自动添加，pill 样式，右上角 x 删除 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">类型</label>
-              <select
-                v-model="formData.type"
-                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">标签（输入后按空格添加，可选择已有标签）</label>
+              <div
+                v-if="existingTags.length"
+                class="mb-2 flex flex-wrap gap-2"
               >
-                <option v-for="opt in formTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-              </select>
+                <button
+                  type="button"
+                  v-for="tag in existingTags"
+                  :key="tag"
+                  @click="formData.tags.includes(tag) ? removeTag(tag) : commitTag(tag)"
+                  class="px-3 py-1 text-xs rounded-full border transition-colors"
+                  :class="formData.tags.includes(tag)
+                    ? tagClass(tag)
+                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'"
+                >
+                  {{ tag }}<span v-if="formData.tags.includes(tag)" class="ml-1">×</span>
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-2 p-2.5 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all bg-white">
+                <span
+                  v-for="tag in formData.tags"
+                  :key="tag"
+                  class="relative inline-flex items-center px-3 py-1 text-xs rounded-full border"
+                  :class="tagClass(tag)"
+                >
+                  {{ tag }}
+                  <button
+                    type="button"
+                    @click="removeTag(tag)"
+                    class="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full bg-gray-500 hover:bg-red-500 text-white text-[10px] leading-none shadow"
+                    :title="`删除标签 ${tag}`"
+                  >×</button>
+                </span>
+                <input
+                  v-model="tagInput"
+                  type="text"
+                  @keydown.space.prevent="addTagFromInput"
+                  @keydown.enter.prevent="addTagFromInput"
+                  @blur="addTagFromInput"
+                  placeholder="输入标签后按空格添加"
+                  class="flex-1 min-w-[160px] px-1 py-0.5 outline-none text-sm"
+                />
+              </div>
             </div>
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">图标</label>
+                <FileInput
+                  v-model="formData.icon"
+                  accept="image/*"
+                  placeholder="图标图片URL或从媒体库选择"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">描述 <span class="text-red-500">*</span></label>
+                <textarea
+                  v-model="formData.summary"
+                  rows="3"
+                  required
+                  maxlength="500"
+                  placeholder="一句话描述该工具（显示在卡片上）"
+                  class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                ></textarea>
+              </div>
+            </div>
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">排序</label>
-              <input
-                v-model.number="formData.order"
-                type="number"
-                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">详细介绍</label>
+              <MarkdownEditor
+                v-model="formData.content"
+                placeholder="工具的详细介绍（支持 Markdown 格式）"
               />
+              <p class="text-xs text-gray-500 mt-1.5">支持 Markdown 所见即所得编辑</p>
             </div>
-          </div>
+          </template>
 
           <!-- Article fields -->
           <div v-if="formData.type === 'article'" class="grid md:grid-cols-3 gap-5">
@@ -682,7 +898,7 @@ function sortMoveDown(index: number) {
             ></textarea>
           </div>
 
-          <div class="grid md:grid-cols-2 gap-5">
+          <div v-if="formData.type !== 'shortcut'" class="grid md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">内容格式</label>
               <select
@@ -706,7 +922,7 @@ function sortMoveDown(index: number) {
           </div>
 
           <!-- Content editor with preview -->
-          <div>
+          <div v-if="formData.type !== 'shortcut'">
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-medium text-gray-700">内容</label>
               <div class="flex items-center gap-2">
@@ -810,6 +1026,7 @@ function sortMoveDown(index: number) {
             <option value="page">课程资料</option>
             <option value="category">栏目</option>
             <option value="article">新闻资讯</option>
+            <option value="shortcut">快捷入口</option>
           </select>
           <span class="ml-2 text-sm text-gray-500">（排序仅针对同类型内容）</span>
         </div>

@@ -56,11 +56,35 @@ def get_db():
         db.close()
 
 
+def _ensure_columns(engine):
+    """为已有表补充新增列（create_all 不会给已存在的表加列）"""
+    from sqlalchemy import text, inspect
+    inspector = inspect(engine)
+    if 'contents' not in inspector.get_table_names():
+        return
+    existing = {c['name'] for c in inspector.get_columns('contents')}
+    new_columns = {
+        'category': 'VARCHAR(100)',
+        'tags': 'VARCHAR(500)',
+        'external_url': 'VARCHAR(500)',
+        'icon': 'VARCHAR(500)',
+    }
+    with engine.connect() as conn:
+        for col, col_type in new_columns.items():
+            if col not in existing:
+                conn.execute(text(f'ALTER TABLE contents ADD COLUMN {col} {col_type}'))
+        conn.commit()
+
+
 def init_db():
     """初始化数据库表"""
     # Import all models to register them with Base.metadata
     from app.models import user, team, work, content, setting  # noqa
-    Base.metadata.create_all(bind=get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine)
+
+    # 为已有数据库补充新增列（SQLite 等不支持 create_all 自动加列）
+    _ensure_columns(engine)
 
     # 创建默认管理员账号
     from sqlalchemy.orm import Session

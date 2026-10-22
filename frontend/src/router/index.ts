@@ -32,6 +32,11 @@ const router = createRouter({
           component: () => import('@/pages/AgentCenterPage.vue')
         },
         {
+          path: 'aitools',
+          name: 'aitools',
+          component: () => import('@/pages/AiToolsPage.vue')
+        },
+        {
           path: 'competition-plan',
           name: 'competition-plan',
           component: () => import('@/pages/CompetitionPlanPage.vue')
