@@ -6,6 +6,7 @@ import Dialog from '@/components/Dialog.vue'
 import FileSelector from '@/components/FileSelector.vue'
 import FileInput from '@/components/FileInput.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useNotification } from '@/composables/useNotification'
 import markdownIt from 'markdown-it'
 import { mediaPlugin } from '@/plugins/markdown'
@@ -903,6 +904,7 @@ function sortMoveDown(index: number) {
               <label class="block text-sm font-medium text-gray-700 mb-1.5">内容格式</label>
               <select
                 v-model="formData.content_format"
+                @change="previewMode = false"
                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
               >
                 <option value="markdown">Markdown</option>
@@ -925,7 +927,7 @@ function sortMoveDown(index: number) {
           <div v-if="formData.type !== 'shortcut'">
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-medium text-gray-700">内容</label>
-              <div class="flex items-center gap-2">
+              <div v-if="formData.content_format !== 'html'" class="flex items-center gap-2">
                 <button
                   type="button"
                   @click="openFileSelector('image')"
@@ -957,7 +959,10 @@ function sortMoveDown(index: number) {
                 </button>
               </div>
             </div>
-            <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <div v-if="formData.content_format === 'html'">
+              <RichTextEditor v-model="formData.content" placeholder="富文本编辑，可直接粘贴网页内容..." />
+            </div>
+            <div v-else class="border border-gray-200 rounded-xl overflow-hidden">
               <textarea
                 v-if="!previewMode"
                 v-model="formData.content"
@@ -972,7 +977,9 @@ function sortMoveDown(index: number) {
               ></div>
             </div>
             <p class="text-xs text-gray-500 mt-1.5">
-              支持 Markdown 格式。切换到预览模式查看效果。
+              {{ formData.content_format === 'html'
+                ? '富文本编辑，可粘贴网页内容保留格式，支持源码模式。'
+                : '支持 Markdown 格式。切换到预览模式查看效果。' }}
             </p>
           </div>
 
