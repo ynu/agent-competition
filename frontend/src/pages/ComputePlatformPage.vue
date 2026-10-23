@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { vReveal } from '@/directives/reveal'
+import ComputeIcon from '@/components/ComputeIcon.vue'
 
 // 算力卡型号（可选择多种算力卡）
 const gpuCards = [
@@ -10,7 +11,7 @@ const gpuCards = [
     scene: '实验 / 小规模微调',
     desc: '高性价比消费级旗舰，适合课程实验、毕业设计与中小模型的微调、推理验证。',
     hue: 'orange',
-    icon: '🟠',
+    icon: 'rtx4090',
     available: true
   },
   {
@@ -20,7 +21,7 @@ const gpuCards = [
     scene: '推理 / 中规模训练',
     desc: '数据中心级推理卡，大显存适合大模型推理服务与中等规模训练任务。',
     hue: 'green',
-    icon: '🟩',
+    icon: 'l20',
     available: true
   },
   {
@@ -30,7 +31,7 @@ const gpuCards = [
     scene: '大模型训练 / 推理',
     desc: '国产自研算力卡，超大显存适合大模型训练与推理，满足自主可控的信创场景需求。',
     hue: 'cyan',
-    icon: '🟦',
+    icon: 'ppu810e',
     available: true
   },
   {
@@ -40,7 +41,7 @@ const gpuCards = [
     scene: '训练 / 推理（建设中）',
     desc: 'H100、A800、A100 等更多算力卡正在接入建设中，敬请期待。',
     hue: 'violet',
-    icon: '✨',
+    icon: 'more',
     available: false
   }
 ]
@@ -48,25 +49,25 @@ const gpuCards = [
 // 适用场景
 const scenes = [
   {
-    icon: '🎓',
+    icon: 'teaching',
     title: '教学实验',
     desc: '人工智能课程实验、训练营实操，学生按需申请 GPU 资源完成作业与项目实践。',
     hue: 'blue'
   },
   {
-    icon: '🔬',
+    icon: 'research',
     title: '科研训练',
     desc: '支持研究生与科研团队开展模型训练、微调与消融实验，加速科研成果产出。',
     hue: 'violet'
   },
   {
-    icon: '🏆',
+    icon: 'competition',
     title: '竞赛支撑',
     desc: '为参赛队伍提供算力保障，支撑智能体开发、模型优化与作品打磨。',
     hue: 'pink'
   },
   {
-    icon: '🚀',
+    icon: 'deploy',
     title: '应用部署',
     desc: '智能体推理服务、校园 AI 应用上线部署，提供稳定的在线算力支撑。',
     hue: 'orange'
@@ -79,29 +80,30 @@ const processSteps = [
     step: '01',
     title: '沟通咨询',
     desc: '通过联系方式与我们沟通，说明算力需求场景、规模与使用周期。',
-    icon: '💬'
+    icon: 'chat'
   },
   {
     step: '02',
     title: '提交申请',
     desc: '填写算力使用申请，包括项目背景、所需算力卡类型、时长与预期成果。',
-    icon: '📝'
+    icon: 'apply'
   },
   {
     step: '03',
     title: '审核评估',
     desc: '平台对申请进行审核评估，通过后分配算力资源并提供使用指引。',
-    icon: '✅'
+    icon: 'review'
   }
 ]
 
-const hueClass: Record<string, string> = {
-  blue: 'bg-gradient-to-br from-[#0090ff] to-[#00c6ff]',
-  violet: 'bg-gradient-to-br from-[#6a5cff] to-[#a18cd1]',
-  pink: 'bg-gradient-to-br from-[#ff5ca8] to-[#ff9f45]',
-  orange: 'bg-gradient-to-br from-[#ff9f0a] to-[#ff5ca8]',
-  green: 'bg-gradient-to-br from-[#30d158] to-[#0090ff]',
-  cyan: 'bg-gradient-to-br from-[#00c6ff] to-[#30d158]'
+// 图标底色（浅色衬底，突出彩色动态图标）
+const tintClass: Record<string, string> = {
+  blue: 'bg-[#0090ff]/10',
+  violet: 'bg-[#6a5cff]/10',
+  pink: 'bg-[#ff5ca8]/10',
+  orange: 'bg-[#ff9f0a]/12',
+  green: 'bg-[#30d158]/12',
+  cyan: 'bg-[#00c6ff]/12'
 }
 </script>
 
@@ -224,10 +226,10 @@ const hueClass: Record<string, string> = {
             >建设中</span>
             <div class="flex items-center gap-[14px]">
               <div
-                class="flex h-[52px] w-[52px] items-center justify-center rounded-[16px] text-[24px] shadow-[0_10px_28px_rgba(29,42,68,0.14)] transition-transform duration-500 group-hover:scale-110"
-                :class="hueClass[card.hue]"
+                class="flex h-[52px] w-[52px] items-center justify-center rounded-[16px] transition-transform duration-500 group-hover:scale-110"
+                :class="tintClass[card.hue]"
               >
-                {{ card.icon }}
+                <ComputeIcon :name="card.icon" :size="30" />
               </div>
               <div>
                 <h3 class="text-[16px] font-[700] text-[#1d1d1f]">{{ card.name }}</h3>
@@ -257,10 +259,10 @@ const hueClass: Record<string, string> = {
             class="apple-card apple-card-hover group p-[26px]"
           >
             <div
-              class="flex h-[56px] w-[56px] items-center justify-center rounded-[18px] text-[26px] shadow-[0_10px_28px_rgba(29,42,68,0.14)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
-              :class="hueClass[scene.hue]"
+              class="flex h-[56px] w-[56px] items-center justify-center rounded-[18px] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
+              :class="tintClass[scene.hue]"
             >
-              {{ scene.icon }}
+              <ComputeIcon :name="scene.icon" :size="32" />
             </div>
             <h3 class="mt-[16px] text-[17px] font-[700] text-[#1d1d1f]">{{ scene.title }}</h3>
             <p class="mt-[8px] text-[13px] leading-[22px] text-[#86868b]">{{ scene.desc }}</p>
@@ -285,8 +287,8 @@ const hueClass: Record<string, string> = {
               {{ p.step }}
             </span>
             <div class="flex items-center gap-[12px]">
-              <div class="flex h-[48px] w-[48px] items-center justify-center rounded-[14px] bg-gradient-to-br from-[#0090ff] to-[#00c6ff] text-[22px] shadow-[0_10px_28px_rgba(0,144,255,0.3)]">
-                {{ p.icon }}
+              <div class="flex h-[48px] w-[48px] items-center justify-center rounded-[14px] bg-[#0090ff]/10">
+                <ComputeIcon :name="p.icon" :size="28" />
               </div>
               <h3 class="text-[17px] font-[700] text-[#1d1d1f]">{{ p.title }}</h3>
             </div>
