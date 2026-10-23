@@ -23,13 +23,13 @@ const banners = [
 
 // 智能体广场：功能亮点
 const agentFeatures = [
-  { icon: '🤖', title: '丰富智能体', desc: '汇聚校园学习、生活、科研等多场景智能体，即点即用', hue: 'blue' },
-  { icon: '🧩', title: '一键创建', desc: '可视化编排 + 提示词工程，零代码搭建你的专属智能体', hue: 'violet' },
-  { icon: '🔌', title: '插件生态', desc: '内置知识库检索、联网搜索、办公套件等丰富插件能力', hue: 'pink' },
-  { icon: '📊', title: '数据分析', desc: '对话量、活跃度等运营数据一目了然，助力持续优化', hue: 'orange' }
+  { icon: 'chat', title: '什么是智能体？', desc: '智能体是能像人一样思考的AI，能够帮你解决各种知识问答、写作、数据分析等问题', hue: 'blue' },
+  { icon: 'build', title: '怎么快速搭建一个智能体', desc: '可以通过一句话、一个文档、一个知识或者引用一些插件，快速搭建智能体', hue: 'violet' },
+  { icon: 'experience', title: '体验一个智能体', desc: '你可以与智能体对话，智能体会根据自己掌握的知识、能力为你解答', hue: 'pink' },
+  { icon: 'plaza', title: '看看大家做的智能体', desc: '智能体广场是校内师生发布备案的智能体集合，可以看到大家通过奇思妙想构建的优秀智能体', hue: 'orange' }
 ]
 
-// 大模型服务平台：能力亮点
+// 大模型服务：能力亮点
 const llmFeatures = [
   { icon: '⚡', title: '极速响应', desc: '高并发推理加速，流式输出低至毫秒级首字延迟', hue: 'blue' },
   { icon: '🛡️', title: '安全合规', desc: '校内私有化部署，数据不出校，保障师生隐私安全', hue: 'green' },
@@ -209,7 +209,7 @@ onMounted(async () => {
             class="apple-card apple-card-hover group p-[26px]"
           >
             <div
-              class="flex h-[56px] w-[56px] items-center justify-center rounded-[18px] text-[26px] shadow-[0_10px_28px_rgba(29,42,68,0.14)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
+              class="flex h-[56px] w-[56px] items-center justify-center rounded-[18px] text-white shadow-[0_10px_28px_rgba(29,42,68,0.14)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
               :class="{
                 'bg-gradient-to-br from-[#0090ff] to-[#00c6ff]': feature.hue === 'blue',
                 'bg-gradient-to-br from-[#6a5cff] to-[#a18cd1]': feature.hue === 'violet',
@@ -218,7 +218,33 @@ onMounted(async () => {
                 'bg-gradient-to-br from-[#30d158] to-[#00c6ff]': feature.hue === 'green'
               }"
             >
-              {{ feature.icon }}
+              <!-- 什么是智能体：对话气泡 -->
+              <svg v-if="feature.icon === 'chat'" class="h-[28px] w-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                <circle cx="8.5" cy="11.5" r="0.7" fill="currentColor" stroke="none" />
+                <circle cx="12" cy="11.5" r="0.7" fill="currentColor" stroke="none" />
+                <circle cx="15.5" cy="11.5" r="0.7" fill="currentColor" stroke="none" />
+              </svg>
+              <!-- 快速搭建：积木组合 -->
+              <svg v-else-if="feature.icon === 'build'" class="h-[28px] w-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="13" width="7" height="7" rx="1.5" />
+                <rect x="14" y="13" width="7" height="7" rx="1.5" />
+                <rect x="8.5" y="4" width="7" height="7" rx="1.5" />
+                <path d="M12 11v2" />
+              </svg>
+              <!-- 体验智能体：对话 + 播放 -->
+              <svg v-else-if="feature.icon === 'experience'" class="h-[28px] w-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.5.4-.8.1-.8-.4V5.5z" />
+                <path d="M10.5 8.2v5l4-2.5-4-2.5z" fill="currentColor" stroke-width="1" />
+              </svg>
+              <!-- 大家做的智能体：广场网格 -->
+              <svg v-else class="h-[28px] w-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="7" cy="6.5" r="2.5" />
+                <circle cx="17" cy="6.5" r="2.5" />
+                <circle cx="7" cy="17.5" r="2.5" />
+                <circle cx="17" cy="17.5" r="2.5" />
+                <path d="M9.5 6.5h5M7 9.5v5M17 9.5v5M9.5 17.5h5" />
+              </svg>
             </div>
             <h3 class="mt-[16px] text-[17px] font-[700] text-[#1d1d1f]">{{ feature.title }}</h3>
             <p class="mt-[8px] text-[13px] leading-[22px] text-[#86868b]">{{ feature.desc }}</p>
@@ -227,7 +253,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- 大模型服务平台 -->
+    <!-- 大模型服务 -->
     <div class="relative py-[80px]">
       <!-- 清新浅色薄雾背景 -->
       <div class="absolute inset-0 bg-gradient-to-b from-[#f7f4ff] via-white to-[#eefaff]"></div>
@@ -244,11 +270,11 @@ onMounted(async () => {
               AI PLATFORM
             </p>
             <h2 class="text-[32px] font-[700] leading-[42px] lg:text-[40px] lg:leading-[52px]">
-              <span class="text-gradient">大模型服务平台</span><br />
+              <span class="text-gradient">大模型服务</span><br />
               <span class="text-[#1d1d1f]">校内一站式 AI 能力底座</span>
             </h2>
             <p class="mt-[24px] text-[15px] text-[#515154] leading-[30px]">
-              大模型服务平台面向全校师生提供统一的大模型 API 服务，兼容主流接口规范，
+              大模型服务面向全校师生提供统一的大模型 API 服务，兼容主流接口规范，
               支持对话推理、文本生成、代码辅助等多种能力，同时提供文生图、TTS 语音合成、ASR 语音识别等多模态服务，
               其他高质量大模型持续更新维护，为教学、科研与校园应用开发提供稳定可靠的 AI 基础设施。
             </p>
@@ -259,7 +285,7 @@ onMounted(async () => {
           <div v-reveal="{ direction: 'right', delay: 100 }" class="order-1 overflow-hidden rounded-[20px] shadow-[0_16px_48px_rgba(29,42,68,0.16)] lg:order-2">
             <img
               :src="imgMaterials"
-              alt="大模型服务平台"
+              alt="大模型服务"
               class="w-full transition-transform duration-700 hover:scale-105"
             />
           </div>

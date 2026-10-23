@@ -14,6 +14,7 @@ const externalLinks = {
   submitWork: '/admin/teams',
   agentPlaza: '/agent-center',
   llmPlatform: 'https://new-api-itc.ynu.edu.cn/',
+  computeService: '/compute-platform',
   contact: '/contact',
   signup: '/login',
 }
@@ -65,7 +66,8 @@ const navItems = computed<NavItem[]>(() => [
     ],
   },
   { label: '智能体广场', externalUrl: externalLinks.agentPlaza },
-  { label: '大模型服务平台', externalUrl: externalLinks.llmPlatform },
+  { label: '大模型服务', externalUrl: externalLinks.llmPlatform },
+  { label: '算力服务', path: externalLinks.computeService },
   { label: '联系我们', path: '/page/contact' },
 ])
 
@@ -173,7 +175,7 @@ const handleLogout = () => {
         </RouterLink>
 
         <!-- 桌面端导航 -->
-        <nav class="hidden lg:flex h-full items-center gap-[6px]">
+        <nav class="hidden lg:flex h-full items-center gap-[2px] xl:gap-[6px]">
           <div
             v-for="item in navItems"
             :key="item.label"
@@ -183,7 +185,7 @@ const handleLogout = () => {
           >
             <button
               type="button"
-              class="nav-btn group h-full border-0 bg-transparent px-[14px] flex flex-col items-center justify-center text-[18px] text-[#1d1d1f] font-[400] tracking-[0.2px] cursor-pointer transition-colors duration-300 hover:text-[#0071e3]"
+              class="nav-btn group h-full border-0 bg-transparent px-[10px] xl:px-[14px] flex flex-col items-center justify-center text-[15px] xl:text-[18px] text-[#1d1d1f] font-[400] tracking-[0.2px] whitespace-nowrap cursor-pointer transition-colors duration-300 hover:text-[#0071e3]"
               :class="{ 'text-[#0071e3]': isActive(item) }"
               @click="item.children ? openDropdown(activeDropdown === item.label ? null : item.label) : goTo(item)"
             >

@@ -9,6 +9,47 @@ interface RevealOptions {
 }
 
 const observerMap = new WeakMap<Element, IntersectionObserver>()
+// 等待显示的元素集合（用于兜底：瞬时滚动跳过的元素）
+const pending = new Set<HTMLElement>()
+let scrollFallbackBound = false
+
+function isAboveViewport(el: HTMLElement) {
+  return el.getBoundingClientRect().bottom < 0
+}
+
+function checkPending() {
+  for (const el of Array.from(pending)) {
+    if (isAboveViewport(el)) {
+      pending.delete(el)
+      const observer = observerMap.get(el)
+      if (observer) observer.unobserve(el)
+      applyReveal(el, Number(el.dataset.revealDelay || 0))
+    }
+  }
+  if (pending.size === 0) unbindScrollFallback()
+}
+
+function bindScrollFallback() {
+  if (scrollFallbackBound) return
+  scrollFallbackBound = true
+  window.addEventListener('scroll', onScroll, { passive: true })
+}
+
+function unbindScrollFallback() {
+  if (!scrollFallbackBound) return
+  scrollFallbackBound = false
+  window.removeEventListener('scroll', onScroll)
+}
+
+let ticking = false
+function onScroll() {
+  if (ticking) return
+  ticking = true
+  window.requestAnimationFrame(() => {
+    ticking = false
+    checkPending()
+  })
+}
 
 function applyInitial(el: HTMLElement, direction: RevealOptions['direction']) {
   el.style.opacity = '0'
@@ -55,13 +96,16 @@ export const vReveal: Directive<HTMLElement, RevealOptions | undefined> = {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return
 
     applyInitial(el, direction)
+    el.dataset.revealDelay = String(delay)
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
+            pending.delete(el)
             observer.unobserve(el)
             observerMap.delete(el)
+            if (pending.size === 0) unbindScrollFallback()
             applyReveal(el, delay)
           }
         }
@@ -71,8 +115,12 @@ export const vReveal: Directive<HTMLElement, RevealOptions | undefined> = {
 
     observer.observe(el)
     observerMap.set(el, observer)
+    // 兜底：滚动惯性/锚点跳转可能瞬间掠过元素，使其从未触发 IntersectionObserver
+    pending.add(el)
+    bindScrollFallback()
   },
   unmounted(el) {
+    pending.delete(el)
     const observer = observerMap.get(el)
     if (observer) {
       observer.unobserve(el)
