@@ -123,11 +123,24 @@ function exitSource() {
   const editor = editorRef.value
   const val = pendingValue !== null ? pendingValue : sourceText.value
   pendingValue = null
+  // 先切回视图，保证任何情况下都能退出源码模式
   showSource.value = false
   if (!editor) return
-  silent = true
-  editor.setHtml(val)
-  silent = false
+  // 复位 selection：源码中清空内容后编辑器 selection 可能指向已不存在的节点，
+  // 不复位会导致 setHtml 抛 Slate 内部错误（"Cannot resolve a Slate point..."）
+  try {
+    editor.deselect()
+  } catch {
+    // 忽略复位 selection 的异常
+  }
+  try {
+    silent = true
+    editor.setHtml(val)
+    silent = false
+  } catch {
+    silent = false
+    // setHtml 失败（如 Slate 内部错误）时仍保证视图已切回，不阻塞页面
+  }
   emitValue(editor.getHtml())
 }
 
