@@ -68,7 +68,7 @@ const navItems = computed<NavItem[]>(() => [
   { label: '智能体广场', externalUrl: externalLinks.agentPlaza },
   { label: '大模型服务', externalUrl: externalLinks.llmPlatform },
   { label: '算力服务', path: externalLinks.computeService },
-  { label: '联系我们', path: '/page/contact' },
+  { label: '联系我们', path: '/contact' },
 ])
 
 const openExternal = (url: string) => {
