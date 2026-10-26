@@ -267,7 +267,8 @@ const handleLogout = () => {
               </button>
             </div>
           </template>
-          <template v-else>
+          <!-- 立即报名按钮已隐藏 -->
+          <!-- <template v-else>
             <el-button
               type="primary"
               round
@@ -277,7 +278,7 @@ const handleLogout = () => {
             >
               立即报名
             </el-button>
-          </template>
+          </template> -->
         </div>
 
         <!-- 移动端汉堡按钮 -->
@@ -397,7 +398,8 @@ const handleLogout = () => {
                 退出登录
               </button>
             </template>
-            <template v-else>
+            <!-- 立即报名按钮已隐藏 -->
+            <!-- <template v-else>
               <button
                 type="button"
                 class="w-full border-0 rounded-full py-[11px] text-[16px] font-[600] text-white cursor-pointer anim-gradient bg-gradient-to-r from-[#0090ff] via-[#6a5cff] to-[#ff5ca8] shadow-[0_8px_24px_rgba(106,92,255,0.35)] active:scale-[0.98] transition-transform"
@@ -405,7 +407,7 @@ const handleLogout = () => {
               >
                 立即报名
               </button>
-            </template>
+            </template> -->
           </div>
         </div>
       </div>
