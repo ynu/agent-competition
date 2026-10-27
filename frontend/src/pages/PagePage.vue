@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { contentApi } from '@/api'
 import markdownIt from 'markdown-it'
@@ -25,6 +25,13 @@ const renderedContent = computed(() => {
 
 onMounted(async () => {
   await fetchContent()
+})
+
+// 路由复用组件实例时（slug 变化），重新拉取内容
+watch(() => route.params.slug, (newSlug, oldSlug) => {
+  if (newSlug && newSlug !== oldSlug) {
+    fetchContent()
+  }
 })
 
 async function fetchContent() {
