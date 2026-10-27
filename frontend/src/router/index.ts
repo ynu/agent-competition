@@ -77,12 +77,6 @@ const router = createRouter({
           component: () => import('@/pages/WorkDetailPage.vue')
         },
         {
-          path: 'page/:slug',
-          name: 'page',
-          component: () => import('@/pages/PagePage.vue')
-        },
-        {
-          // 栏目页：通过 /{slug} 直接访问（需放在子路由最后，静态路由优先级更高）
           path: ':slug',
           name: 'slug-page',
           component: () => import('@/pages/PagePage.vue')
