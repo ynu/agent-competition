@@ -23,10 +23,10 @@ const banners = [
 
 // 智能体广场：功能亮点
 const agentFeatures = [
-  { icon: 'agent', title: '什么是智能体？', desc: '智能体是能像人一样思考的AI，能够帮你解决各种知识问答、写作、数据分析等问题' },
-  { icon: 'build', title: '怎么快速搭建一个智能体', desc: '可以通过一句话、一个文档、一个知识或者引用一些插件，快速搭建智能体' },
-  { icon: 'experience', title: '体验一个智能体', desc: '你可以与智能体对话，智能体会根据自己掌握的知识、能力为你解答' },
-  { icon: 'plaza', title: '看看大家做的智能体', desc: '智能体广场是校内师生发布备案的智能体集合，可以看到大家通过奇思妙想构建的优秀智能体' }
+  { icon: 'agent', title: '什么是智能体？', desc: '智能体是能像人一样思考的AI，能够帮你解决各种知识问答、写作、数据分析等问题', url: 'https://agent.ynu.edu.cn/platform/doc/user-guide/hiagent-introduction' },
+  { icon: 'build', title: '怎么快速搭建一个智能体', desc: '可以通过一句话、一个文档、一个知识或者引用一些插件，快速搭建智能体', url: 'https://agent.ynu.edu.cn/platform/doc/user-guide/agent-development' },
+  { icon: 'experience', title: '体验一个智能体', desc: '你可以与智能体对话，智能体会根据自己掌握的知识、能力为你解答', url: 'https://agent.ynu.edu.cn/platform/doc/user-guide/agent' },
+  { icon: 'plaza', title: '看看大家做的智能体', desc: '智能体广场是校内师生发布备案的智能体集合，可以看到大家通过奇思妙想构建的优秀智能体', url: 'https://agent.ynu.edu.cn/product/llm/mall/application' }
 ]
 
 // 大模型服务：能力亮点
@@ -202,11 +202,14 @@ onMounted(async () => {
 
         <!-- 能力亮点 -->
         <div class="mt-[44px] grid gap-[20px] sm:grid-cols-2 lg:grid-cols-4">
-          <div
+          <a
             v-for="(feature, index) in agentFeatures"
             :key="feature.title"
             v-reveal="{ delay: 100 + index * 90 }"
-            class="apple-card apple-card-hover group p-[26px]"
+            :href="feature.url"
+            target="_blank"
+            rel="noopener,noreferrer"
+            class="apple-card apple-card-hover agent-feature-card group block p-[26px]"
           >
             <div class="h-[56px] w-[56px] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
               <!-- 什么是智能体:会眨眼说话的机器人 -->
@@ -275,9 +278,13 @@ onMounted(async () => {
                 </defs>
               </svg>
             </div>
-            <h3 class="mt-[16px] text-[17px] font-[700] text-[#1d1d1f]">{{ feature.title }}</h3>
+            <h3 class="mt-[16px] flex items-center gap-[6px] text-[17px] font-[700] text-[#1d1d1f]">{{ feature.title }}
+              <svg viewBox="0 0 24 24" class="agent-feature-arrow h-[15px] w-[15px] shrink-0" fill="none" aria-hidden="true">
+                <path d="M5 12h14m0 0-6-6m6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </h3>
             <p class="mt-[8px] text-[13px] leading-[22px] text-[#86868b]">{{ feature.desc }}</p>
-          </div>
+          </a>
         </div>
       </div>
     </div>
@@ -424,6 +431,54 @@ onMounted(async () => {
 .news-item:hover .news-date {
   background: var(--gradient-blue);
   box-shadow: 0 8px 20px rgba(0, 113, 227, 0.32);
+}
+
+/* 智能体广场：可点击卡片悬停特效 */
+.agent-feature-card {
+  cursor: pointer;
+}
+
+.agent-feature-card:hover {
+  border-color: rgba(0, 113, 227, 0.45);
+  background: linear-gradient(
+    150deg,
+    rgba(239, 246, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.9) 45%,
+    rgba(240, 253, 250, 0.92) 100%
+  );
+}
+
+.agent-feature-card:active {
+  transform: translateY(-2px) scale(0.985);
+}
+
+/* 标题旁的箭头：默认隐藏，悬停时滑入并呼吸 */
+.agent-feature-arrow {
+  margin-left: 2px;
+  color: #0071e3;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agent-feature-card:hover .agent-feature-arrow {
+  opacity: 1;
+  transform: translateX(0);
+  animation: agent-arrow-breathe 1.2s ease-in-out 0.3s infinite;
+}
+
+.agent-feature-card:hover h3 {
+  color: #0071e3;
+}
+
+@keyframes agent-arrow-breathe {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
 }
 
 /* 板块背景光斑漂移 */
