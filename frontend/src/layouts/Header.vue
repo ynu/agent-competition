@@ -43,6 +43,8 @@ interface NavItem extends NavLeaf {
 
 const navItems = computed<NavItem[]>(() => [
   { label: '首页', path: '/' },
+  { label: '大模型服务', externalUrl: externalLinks.llmPlatform },
+  { label: '算力服务', path: externalLinks.computeService },
   { label: '创建智能体', externalUrl: externalLinks.createAgent },
   {
     label: 'AI工具',
@@ -66,8 +68,6 @@ const navItems = computed<NavItem[]>(() => [
     ],
   },
   { label: '智能体广场', externalUrl: externalLinks.agentPlaza },
-  { label: '大模型服务', externalUrl: externalLinks.llmPlatform },
-  { label: '算力服务', path: externalLinks.computeService },
   { label: '联系我们', path: '/contact' },
 ])
 
