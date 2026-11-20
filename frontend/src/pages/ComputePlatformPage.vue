@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { vReveal } from '@/directives/reveal'
 
 // 算力卡型号（可选择多种算力卡）
@@ -57,7 +58,7 @@ const scenes = [
   }
 ]
 
-// 提供方式：沟通 - 申请 - 审核
+// 服务获取方式：沟通 - 申请 - 审核
 const processSteps = [
   {
     step: '01',
@@ -75,6 +76,60 @@ const processSteps = [
     desc: '平台对申请进行审核评估，通过后分配算力资源并提供使用指引。'
   }
 ]
+
+// 典型任务示例
+const taskExamples = [
+  {
+    title: '给一门课安排 GPU 实验',
+    desc: '课程教师希望学生在同一周完成图像分类训练，或上机运行一次大模型推理实验。',
+    prepare: '课程名称、学生人数、同时上机人数、实验时段和软件版本。'
+  },
+  {
+    title: '用自有数据微调模型',
+    desc: '课题组已有开源模型和训练代码，计划用自有数据进行微调，再对比实验结果。',
+    prepare: '模型及数据规模、训练方式、框架版本、预计运行时长。'
+  },
+  {
+    title: '为竞赛作品安排集中测试',
+    desc: '团队希望在作品提交前集中调试模型，验证演示期间的推理效果。',
+    prepare: '竞赛名称、关键节点、集中调试时段、是否需要持续运行模型。'
+  },
+  {
+    title: '验证校园 AI 应用的性能',
+    desc: '项目团队准备测试自建模型的推理速度和并发能力，为上线评估提供依据。',
+    prepare: '应用用途、模型版本、预计并发、测试周期。'
+  }
+]
+
+// 复制需求说明模板
+const copied = ref(false)
+let copyTimer: number | undefined
+const requirementTemplate = `【算力使用需求说明模板】
+1. 任务场景：教学实验 / 科研训练 / 竞赛支撑 / 应用部署
+2. 课程 / 项目 / 竞赛名称：
+3. 使用人及联系方式：
+4. 任务内容：训练 / 微调 / 推理 / 性能测试
+5. 期望算力卡类型与数量：
+6. 使用时段与预计时长：
+7. 软件框架与版本要求：
+8. 预期成果：`
+
+const copyTemplate = async () => {
+  try {
+    await navigator.clipboard.writeText(requirementTemplate)
+  } catch {
+    // 剪贴板 API 不可用时降级
+    const ta = document.createElement('textarea')
+    ta.value = requirementTemplate
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    ta.remove()
+  }
+  copied.value = true
+  window.clearTimeout(copyTimer)
+  copyTimer = window.setTimeout(() => (copied.value = false), 2000)
+}
 </script>
 
 <template>
@@ -90,12 +145,12 @@ const processSteps = [
 
       <!-- 页头 -->
       <div v-reveal="{ delay: 60 }" class="mt-[28px] text-center">
-        <h1 class="text-[34px] font-[700] lg:text-[44px]"><span class="text-gradient">算力服务</span></h1>
-        <p class="mt-[10px] text-[15px] text-[#86868b]">面向全校师生提供 GPU 算力支撑，教学科研竞赛一站式保障</p>
+        <h1 class="text-[34px] font-[700] lg:text-[44px]"><span class="text-gradient">校内GPU算力服务</span></h1>
+        <p class="mt-[10px] text-[20px] text-[#86868b]">面向全校师生，为课程实验、科研训练、学科竞赛和校园AI应用验证提供算力支持。</p>
       </div>
 
       <!-- GPU 算力介绍 -->
-      <div v-reveal class="apple-card mt-[44px] grid items-center gap-[48px] p-[40px] lg:grid-cols-[1fr_420px] lg:p-[56px]">
+      <div id="gpu-intro" v-reveal class="apple-card mt-[44px] grid items-center gap-[48px] p-[40px] lg:grid-cols-[1fr_420px] lg:p-[56px]">
         <div v-reveal="{ direction: 'left', delay: 100 }">
           <p class="mb-[14px] inline-flex items-center gap-[6px] rounded-full bg-[#30d158]/10 px-[14px] py-[6px] text-[13px] font-[600] text-[#1f9d41]">
             <span class="h-[6px] w-[6px] rounded-full bg-gradient-to-r from-[#30d158] to-[#00c6ff] badge-dot"></span>
@@ -111,18 +166,27 @@ const processSteps = [
             助力师生专注模型与应用本身，无需关心底层基础设施。
           </p>
           <div class="mt-[24px] grid grid-cols-3 gap-[16px]">
-            <div class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center">
+            <a
+              href="#gpu-cards"
+              class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center transition-colors duration-300 hover:bg-[#e8f1fd]"
+            >
               <p class="text-[24px] font-[700] text-[#0071e3]">多种</p>
               <p class="mt-[4px] text-[12px] text-[#86868b]">算力卡可选</p>
-            </div>
-            <div class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center">
+            </a>
+            <a
+              href="#gpu-scene"
+              class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center transition-colors duration-300 hover:bg-[#efedff]"
+            >
               <p class="text-[24px] font-[700] text-[#6a5cff]">弹性</p>
               <p class="mt-[4px] text-[12px] text-[#86868b]">按需分配</p>
-            </div>
-            <div class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center">
+            </a>
+            <a
+              href="#gpu-process"
+              class="rounded-[16px] bg-[#f5f5f7] p-[16px] text-center transition-colors duration-300 hover:bg-[#ffeef6]"
+            >
               <p class="text-[24px] font-[700] text-[#ff5ca8]">一站式</p>
               <p class="mt-[4px] text-[12px] text-[#86868b]">申请即用</p>
-            </div>
+            </a>
           </div>
         </div>
         <div v-reveal="{ direction: 'right', delay: 200 }" class="order-2 overflow-hidden rounded-[20px] shadow-[0_16px_48px_rgba(29,42,68,0.16)] lg:order-2">
@@ -212,8 +276,92 @@ const processSteps = [
         </div>
       </div>
 
+      <!-- 服务获取方式：沟通-申请-审核 -->
+      <div id="gpu-process" class="mt-[56px]">
+        <div v-reveal="{ delay: 60 }" class="text-center">
+          <h2 class="text-[26px] font-[700] text-[#1d1d1f] lg:text-[32px]">服务获取方式：<span class="text-gradient">沟通 · 申请 · 审核</span></h2>
+          <p class="mt-[10px] text-[15px] text-[#86868b]">三步获取算力资源，保障资源合理分配与高效使用</p>
+        </div>
+        <div class="mt-[28px] grid gap-[20px] lg:grid-cols-3">
+          <div
+            v-for="(p, index) in processSteps"
+            :key="p.step"
+            v-reveal="{ delay: 100 + index * 120 }"
+            class="apple-card apple-card-hover relative overflow-hidden p-[28px]"
+          >
+            <span class="pointer-events-none absolute -right-[10px] -top-[18px] text-[88px] font-[800] leading-none text-[#0071e3]/6 select-none">
+              {{ p.step }}
+            </span>
+            <div class="flex items-center gap-[12px]">
+              <div class="h-[48px] w-[48px] shrink-0">
+                <!-- 沟通咨询:双气泡往复 -->
+                <svg v-if="p.title === '沟通咨询'" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <path d="M12 6h18a7 7 0 0 1 7 7v6a7 7 0 0 1-7 7H20l-7.5 7V26H12a7 7 0 0 1-7-7v-6a7 7 0 0 1 7-7Z" fill="url(#cp-chat1)" class="ic-jelly"/>
+                  <circle class="ic-hop" cx="16" cy="16.5" r="2.6" fill="#fff"/>
+                  <circle class="ic-hop ic-h2" cx="23" cy="16.5" r="2.6" fill="#fff"/>
+                  <circle class="ic-hop ic-h3" cx="30" cy="16.5" r="2.6" fill="#fff"/>
+                  <g class="ic-reply">
+                    <path d="M36 26h2a5 5 0 0 1 5 5v3a5 5 0 0 1-5 5h-6l-4 3.5V39h-2" fill="none"/>
+                    <circle cx="38.5" cy="32.5" r="4.8" fill="url(#cp-chat2)"/>
+                    <circle cx="36.6" cy="32.5" r="1" fill="#fff"/>
+                    <circle cx="38.5" cy="32.5" r="1" fill="#fff"/>
+                    <circle cx="40.4" cy="32.5" r="1" fill="#fff"/>
+                  </g>
+                  <defs>
+                    <linearGradient id="cp-chat1" x1="5" y1="6" x2="37" y2="26" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#22d3ee"/><stop offset="1" stop-color="#0891b2"/>
+                    </linearGradient>
+                    <linearGradient id="cp-chat2" x1="34" y1="28" x2="43" y2="38" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#bef264"/><stop offset="1" stop-color="#22d3ee"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <!-- 提交申请:文档 + 笔疾书 -->
+                <svg v-else-if="p.title === '提交申请'" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <g class="ic-bob">
+                    <path d="M12 4h13l11 11v24a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Z" fill="#fff" stroke="url(#cp-apply)" stroke-width="3"/>
+                    <path d="M25 4v11h11" stroke="url(#cp-apply)" stroke-width="3" stroke-linejoin="round"/>
+                    <path d="M14 21h9" stroke="#9333ea" stroke-width="3.2" stroke-linecap="round"/>
+                    <path d="M14 28h12" stroke="#fbbf24" stroke-width="3.2" stroke-linecap="round" class="ic-ink"/>
+                    <g class="ic-scribe">
+                      <path d="M25.5 28 35 18.5l4.2 4.2-9.5 9.5-5.4 1.2 1.2-5.4Z" fill="url(#cp-apply)"/>
+                    </g>
+                  </g>
+                  <circle cx="42" cy="9" r="2.6" fill="#fbbf24" class="ic-tw"/>
+                  <defs>
+                    <linearGradient id="cp-apply" x1="8" y1="4" x2="39" y2="43" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#c084fc"/><stop offset="1" stop-color="#9333ea"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <!-- 审核评估:对勾盖章 + 双环对转 -->
+                <svg v-else viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <circle cx="24" cy="24" r="21.5" stroke="#16a34a" stroke-width="2.4" stroke-dasharray="6 8" opacity=".55" class="ic-spin-slow"/>
+                  <circle cx="24" cy="24" r="16.5" stroke="#93c5fd" stroke-width="2.4" stroke-dasharray="13 8" opacity=".75" class="ic-spin-rev"/>
+                  <circle cx="24" cy="24" r="12.5" fill="url(#cp-review)" class="ic-pump"/>
+                  <path d="M17 24.5l5 5 9.5-11" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" class="ic-draw"/>
+                  <defs>
+                    <linearGradient id="cp-review" x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#4ade80"/><stop offset="1" stop-color="#16a34a"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <h3 class="text-[17px] font-[700] text-[#1d1d1f]">{{ p.title }}</h3>
+            </div>
+            <p class="mt-[14px] text-[13px] leading-[22px] text-[#86868b]">{{ p.desc }}</p>
+            <div v-if="index < processSteps.length - 1" class="mt-[16px] hidden items-center gap-[8px] text-[12px] text-[#a1a1a6] lg:flex">
+              <span>下一步</span>
+              <svg class="next-arrow h-[14px] w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 算力卡选择 -->
-      <div class="mt-[56px]">
+      <div id="gpu-cards" class="mt-[56px]">
         <div v-reveal="{ delay: 60 }" class="text-center">
           <h2 class="text-[26px] font-[700] text-[#1d1d1f] lg:text-[32px]">多种<span class="text-gradient">算力卡</span>可选</h2>
           <p class="mt-[10px] text-[15px] text-[#86868b]">目前已提供 RTX 4090、L20、平头哥 PPU-810E 三种算力卡，更多型号建设中</p>
@@ -310,7 +458,7 @@ const processSteps = [
       </div>
 
       <!-- 适用场景 -->
-      <div class="mt-[56px]">
+      <div id="gpu-scene" class="mt-[56px]">
         <div v-reveal="{ delay: 60 }" class="text-center">
           <h2 class="text-[26px] font-[700] text-[#1d1d1f] lg:text-[32px]">适用<span class="text-gradient">场景</span></h2>
           <p class="mt-[10px] text-[15px] text-[#86868b]">覆盖教学、科研、竞赛与应用部署全链路</p>
@@ -391,85 +539,109 @@ const processSteps = [
         </div>
       </div>
 
-      <!-- 提供方式：沟通-申请-审核 -->
-      <div class="mt-[56px]">
+      <!-- 典型任务示例 -->
+      <div id="gpu-tasks" class="mt-[56px]">
         <div v-reveal="{ delay: 60 }" class="text-center">
-          <h2 class="text-[26px] font-[700] text-[#1d1d1f] lg:text-[32px]">提供方式：<span class="text-gradient">沟通 · 申请 · 审核</span></h2>
-          <p class="mt-[10px] text-[15px] text-[#86868b]">三步获取算力资源，保障资源合理分配与高效使用</p>
+          <h2 class="text-[26px] font-[700] text-[#1d1d1f] lg:text-[32px]">典型<span class="text-gradient">任务示例</span></h2>
+          <p class="mt-[10px] text-[15px] text-[#86868b]">对照你的任务，看看哪些环节需要算力、咨询时可准备什么。</p>
         </div>
-        <div class="mt-[28px] grid gap-[20px] lg:grid-cols-3">
+        <div class="mt-[28px] grid gap-[20px] sm:grid-cols-2">
           <div
-            v-for="(p, index) in processSteps"
-            :key="p.step"
-            v-reveal="{ delay: 100 + index * 120 }"
-            class="apple-card apple-card-hover relative overflow-hidden p-[28px]"
+            v-for="(task, index) in taskExamples"
+            :key="task.title"
+            v-reveal="{ delay: 100 + index * 90 }"
+            class="apple-card apple-card-hover group relative flex flex-col p-[28px]"
           >
-            <span class="pointer-events-none absolute -right-[10px] -top-[18px] text-[88px] font-[800] leading-none text-[#0071e3]/6 select-none">
-              {{ p.step }}
-            </span>
-            <div class="flex items-center gap-[12px]">
-              <div class="h-[48px] w-[48px] shrink-0">
-                <!-- 沟通咨询:双气泡往复 -->
-                <svg v-if="p.title === '沟通咨询'" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
-                  <path d="M12 6h18a7 7 0 0 1 7 7v6a7 7 0 0 1-7 7H20l-7.5 7V26H12a7 7 0 0 1-7-7v-6a7 7 0 0 1 7-7Z" fill="url(#cp-chat1)" class="ic-jelly"/>
-                  <circle class="ic-hop" cx="16" cy="16.5" r="2.6" fill="#fff"/>
-                  <circle class="ic-hop ic-h2" cx="23" cy="16.5" r="2.6" fill="#fff"/>
-                  <circle class="ic-hop ic-h3" cx="30" cy="16.5" r="2.6" fill="#fff"/>
-                  <g class="ic-reply">
-                    <path d="M36 26h2a5 5 0 0 1 5 5v3a5 5 0 0 1-5 5h-6l-4 3.5V39h-2" fill="none"/>
-                    <circle cx="38.5" cy="32.5" r="4.8" fill="url(#cp-chat2)"/>
-                    <circle cx="36.6" cy="32.5" r="1" fill="#fff"/>
-                    <circle cx="38.5" cy="32.5" r="1" fill="#fff"/>
-                    <circle cx="40.4" cy="32.5" r="1" fill="#fff"/>
-                  </g>
-                  <defs>
-                    <linearGradient id="cp-chat1" x1="5" y1="6" x2="37" y2="26" gradientUnits="userSpaceOnUse">
-                      <stop stop-color="#22d3ee"/><stop offset="1" stop-color="#0891b2"/>
-                    </linearGradient>
-                    <linearGradient id="cp-chat2" x1="34" y1="28" x2="43" y2="38" gradientUnits="userSpaceOnUse">
-                      <stop stop-color="#bef264"/><stop offset="1" stop-color="#22d3ee"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <!-- 提交申请:文档 + 笔疾书 -->
-                <svg v-else-if="p.title === '提交申请'" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+            <div class="flex items-start gap-[16px]">
+              <div class="h-[48px] w-[48px] shrink-0 transition-transform duration-500 group-hover:scale-110">
+                <!-- 课程实验:GPU 板卡 + 学士帽 -->
+                <svg v-if="index === 0" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
                   <g class="ic-bob">
-                    <path d="M12 4h13l11 11v24a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Z" fill="#fff" stroke="url(#cp-apply)" stroke-width="3"/>
-                    <path d="M25 4v11h11" stroke="url(#cp-apply)" stroke-width="3" stroke-linejoin="round"/>
-                    <path d="M14 21h9" stroke="#9333ea" stroke-width="3.2" stroke-linecap="round"/>
-                    <path d="M14 28h12" stroke="#fbbf24" stroke-width="3.2" stroke-linecap="round" class="ic-ink"/>
-                    <g class="ic-scribe">
-                      <path d="M25.5 28 35 18.5l4.2 4.2-9.5 9.5-5.4 1.2 1.2-5.4Z" fill="url(#cp-apply)"/>
-                    </g>
+                    <path d="M24 3.5 33.5 8 24 12.5 14.5 8Z" fill="url(#ct-lab-cap)"/>
+                    <path d="M19.5 10.6v3.2a4.5 3 0 0 0 9 0v-3.2" stroke="#4f46e5" stroke-width="2"/>
+                    <path d="M33.5 8v4.5" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="33.5" cy="14" r="1.6" fill="#fbbf24" class="ic-dot"/>
                   </g>
-                  <circle cx="42" cy="9" r="2.6" fill="#fbbf24" class="ic-tw"/>
+                  <rect x="5" y="19" width="38" height="23" rx="5" fill="url(#ct-lab)" class="ic-breathe"/>
+                  <rect x="11" y="25" width="13" height="11" rx="2.5" fill="#fff" opacity=".92"/>
+                  <path d="M14.5 28.5h6M14.5 32.5h4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" class="ic-ink"/>
+                  <g fill="#fff" opacity=".8">
+                    <rect x="29" y="25" width="8" height="4.6" rx="1.4"/>
+                    <rect x="29" y="32" width="8" height="4.6" rx="1.4"/>
+                  </g>
+                  <rect x="11.5" y="19" width="4" height="23" rx="2" fill="#fff" opacity=".5" class="ic-sweep-x"/>
                   <defs>
-                    <linearGradient id="cp-apply" x1="8" y1="4" x2="39" y2="43" gradientUnits="userSpaceOnUse">
-                      <stop stop-color="#c084fc"/><stop offset="1" stop-color="#9333ea"/>
+                    <linearGradient id="ct-lab" x1="5" y1="19" x2="43" y2="42" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#38bdf8"/><stop offset="1" stop-color="#4f46e5"/>
+                    </linearGradient>
+                    <linearGradient id="ct-lab-cap" x1="14.5" y1="3.5" x2="33.5" y2="12.5" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#818cf8"/><stop offset="1" stop-color="#4f46e5"/>
                     </linearGradient>
                   </defs>
                 </svg>
-                <!-- 审核评估:对勾盖章 + 双环对转 -->
-                <svg v-else viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
-                  <circle cx="24" cy="24" r="21.5" stroke="#16a34a" stroke-width="2.4" stroke-dasharray="6 8" opacity=".55" class="ic-spin-slow"/>
-                  <circle cx="24" cy="24" r="16.5" stroke="#93c5fd" stroke-width="2.4" stroke-dasharray="13 8" opacity=".75" class="ic-spin-rev"/>
-                  <circle cx="24" cy="24" r="12.5" fill="url(#cp-review)" class="ic-pump"/>
-                  <path d="M17 24.5l5 5 9.5-11" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" class="ic-draw"/>
+                <!-- 微调模型:调参滑块 -->
+                <svg v-else-if="index === 1" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <rect x="5" y="6" width="38" height="36" rx="8" fill="#faf5ff" stroke="#8b5cf6" stroke-width="2.4"/>
+                  <g stroke="#c4b5fd" stroke-width="3" stroke-linecap="round">
+                    <path d="M11 15h26M11 24h26M11 33h26"/>
+                  </g>
+                  <circle cx="18" cy="15" r="4" fill="url(#ct-tune)" class="ic-knob"/>
+                  <circle cx="30" cy="24" r="4" fill="url(#ct-tune)" class="ic-knob ic-k2"/>
+                  <circle cx="22" cy="33" r="4" fill="url(#ct-tune)" class="ic-knob ic-k3"/>
+                  <circle cx="18" cy="15" r="1.4" fill="#fff" class="ic-knob"/>
+                  <circle cx="30" cy="24" r="1.4" fill="#fff" class="ic-knob ic-k2"/>
+                  <circle cx="22" cy="33" r="1.4" fill="#fff" class="ic-knob ic-k3"/>
+                  <circle cx="37" cy="11" r="2.2" fill="#fbbf24" class="ic-tw"/>
                   <defs>
-                    <linearGradient id="cp-review" x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                      <stop stop-color="#4ade80"/><stop offset="1" stop-color="#16a34a"/>
+                    <linearGradient id="ct-tune" x1="14" y1="11" x2="34" y2="37" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#c084fc"/><stop offset="1" stop-color="#7c3aed"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <!-- 竞赛测试:秒表计时 -->
+                <svg v-else-if="index === 2" viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <path d="M20 4h8M24 4v4.5" stroke="#ea580c" stroke-width="3.4" stroke-linecap="round"/>
+                  <circle cx="24" cy="27" r="16" fill="#fff7ed" stroke="url(#ct-test)" stroke-width="3"/>
+                  <g stroke="#fb923c" stroke-width="2" stroke-linecap="round" opacity=".7">
+                    <path d="M24 13.5v3M37.5 27h-3M13.5 27h3M33.8 17.2l-2.1 2.1M14.2 17.2l2.1 2.1"/>
+                  </g>
+                  <path d="M24 27l6.5-6.5" stroke="#ea580c" stroke-width="3" stroke-linecap="round" class="ic-tick"/>
+                  <circle cx="24" cy="27" r="2.6" fill="#ea580c"/>
+                  <path d="M4 23h4M3.5 30h4" stroke="#fdba74" stroke-width="2.4" stroke-linecap="round" class="ic-zoom"/>
+                  <path d="M40 23h4M40.5 30h4" stroke="#fdba74" stroke-width="2.4" stroke-linecap="round" class="ic-zoom"/>
+                  <circle cx="38" cy="6" r="2.2" fill="#fbbf24" class="ic-tw"/>
+                  <defs>
+                    <linearGradient id="ct-test" x1="8" y1="11" x2="40" y2="43" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <!-- 性能验证:波形 + 并发脉冲 -->
+                <svg v-else viewBox="0 0 48 48" class="h-full w-full" fill="none" aria-hidden="true">
+                  <rect x="5" y="7" width="38" height="34" rx="8" fill="#fff1f2" stroke="#e11d48" stroke-width="2.4"/>
+                  <path d="M9 22h6l3.5-8 5 15 4-11 2.5 4H39" stroke="url(#ct-perf)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" class="ic-trace"/>
+                  <g fill="#fb7185">
+                    <rect x="13" y="34" width="4" height="3" rx="1.4" class="ic-dot"/>
+                    <rect x="20" y="32" width="4" height="5" rx="1.4" class="ic-dot ic-d2"/>
+                    <rect x="27" y="30" width="4" height="7" rx="1.4" class="ic-dot ic-d3"/>
+                  </g>
+                  <circle cx="37.5" cy="13" r="5.5" fill="#e11d48" class="ic-pump"/>
+                  <path d="M35.2 13l1.7 1.7 3-3.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="ic-draw"/>
+                  <defs>
+                    <linearGradient id="ct-perf" x1="9" y1="14" x2="39" y2="29" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#fbbf24"/><stop offset="1" stop-color="#e11d48"/>
                     </linearGradient>
                   </defs>
                 </svg>
               </div>
-              <h3 class="text-[17px] font-[700] text-[#1d1d1f]">{{ p.title }}</h3>
+              <h3 class="text-[17px] font-[700] leading-[26px] text-[#1d1d1f]">{{ task.title }}</h3>
             </div>
-            <p class="mt-[14px] text-[13px] leading-[22px] text-[#86868b]">{{ p.desc }}</p>
-            <div v-if="index < processSteps.length - 1" class="mt-[16px] hidden items-center gap-[8px] text-[12px] text-[#a1a1a6] lg:flex">
-              <span>下一步</span>
-              <svg class="next-arrow h-[14px] w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M13 6l6 6-6 6"/>
-              </svg>
+            <p class="mt-[14px] text-[13px] leading-[22px] text-[#515154]">{{ task.desc }}</p>
+            <div class="mt-auto pt-[14px]">
+              <div class="border-t border-[#e8e8ed] pt-[14px] text-[13px] leading-[22px]">
+                <span class="font-[600] text-[#1d1d1f]">咨询时可准备</span>
+                <span class="ml-[8px] text-[#86868b]">{{ task.prepare }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -480,19 +652,20 @@ const processSteps = [
         <div class="pointer-events-none absolute left-[10%] top-[30%] h-40 w-40 rounded-full bg-[#0090ff]/25 blur-3xl anim-blob"></div>
         <div class="pointer-events-none absolute right-[12%] bottom-[20%] h-44 w-44 rounded-full bg-[#6a5cff]/25 blur-3xl anim-blob anim-blob-2"></div>
         <div class="relative">
+          <!--
           <p class="inline-flex items-center gap-[8px] rounded-full border border-white/15 bg-white/8 px-[16px] py-[7px] text-[13px] font-[600] text-[#9bd8ff]">
             <span class="relative flex h-[8px] w-[8px]">
               <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#30d158] opacity-60"></span>
               <span class="relative inline-flex h-[8px] w-[8px] rounded-full bg-[#30d158]"></span>
             </span>
-            平台正在建设中
+            
           </p>
+          -->
           <h2 class="mt-[20px] text-[28px] font-[700] text-white lg:text-[36px]">
-            算力服务<span class="text-gradient">建设中</span>，敬请期待
+            算力服务<span class="text-gradient">持续建设中</span>，敬请期待
           </h2>
-          <p class="mx-auto mt-[14px] max-w-[560px] text-[14px] leading-[26px] text-[#a8b3c7]">
-            算力服务正在加紧建设与调试中，上线后将开放算力申请入口。
-            如有紧急算力需求，可通过「联系我们」页面与我们沟通。
+          <p class="mx-auto mt-[14px] max-w-[560px] text-[18px] leading-[26px] text-[#a8b3c7]">
+            算力服务正式上线后将开放申请入口，如有紧急算力需求，可通过「联系我们」与我们沟通使用需求。
           </p>
           <div class="mt-[28px] flex flex-wrap items-center justify-center gap-[14px]">
             <RouterLink
@@ -615,6 +788,37 @@ svg [class*=' ic-'] {
 .ic-scribe {
   transform-origin: 0% 100%;
   animation: ic-scribe 1.5s ease-in-out infinite;
+}
+.ic-knob {
+  animation: ic-knob 2.4s ease-in-out infinite;
+}
+.ic-k2 {
+  animation-delay: 0.4s;
+}
+.ic-k3 {
+  animation-delay: 0.8s;
+}
+.ic-tick {
+  transform-origin: 24px 27px;
+  animation: ic-tick 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.ic-trace {
+  stroke-dasharray: 60;
+  animation: ic-trace 2.6s ease-in-out infinite;
+}
+
+@keyframes ic-knob {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(9px); }
+}
+@keyframes ic-tick {
+  0% { transform: rotate(-120deg); }
+  55%, 100% { transform: rotate(90deg); }
+}
+@keyframes ic-trace {
+  0% { stroke-dashoffset: 60; }
+  45%, 70% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -60; }
 }
 
 @keyframes ic-breathe {
